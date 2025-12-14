@@ -1,0 +1,17 @@
+{
+    "venvPath": "${workspaceFolder}",
+    "venv": "venv",
+    "pythonVersion": "3.13",
+    "typeCheckingMode": "basic",
+    "executionEnvironments": [
+        {
+            "root": "${workspaceFolder}",
+            "pythonVersion": "3.13",
+            "pythonPlatform": "Linux",
+            "extraPaths": [
+                "${workspaceFolder}/venv/lib/python3.13/site-packages"
+            ]
+        }
+    ]
+}
+
