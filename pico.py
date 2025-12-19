@@ -14,6 +14,7 @@ from constants import (
     PICO_MIDDLE,
     PICO_FILL,
     PICO_CLIP_RESET,
+    PICO_BYTES_PER_PIXEL_RGBA32,
 )
 from tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 
@@ -110,7 +111,7 @@ def _pico_output_present(force):
     if S.expert and not force:
         return
     
-    # Salvar clip atual
+    # Salva a região de clipping atual
     clip = sdl2.SDL_Rect()
     sdl2.SDL_RenderGetClipRect(REN, clip)
     
@@ -122,10 +123,13 @@ def _pico_output_present(force):
     sdl2.SDL_SetRenderDrawColor(REN, 119, 119, 119, 119)
     sdl2.SDL_RenderClear(REN)
     
-    # Copiar textura
+    # Copiar a textura TEX para a tela
     sdl2.SDL_RenderCopy(REN, TEX, None, None)
     
-    # Mostrar grid
+    # Mostrar grid na tela somente(o target aqui já é None)
+    # A grade é desenhada diretamente na tela, portanto, ao fazer screenshot, a grade não é copiada
+    # automaticamentepara o arquivo da screenshot. Nesse caso é necessário forçar a apresentação da grade na tela
+    # para garantir que ela seja salva no arquivo
     _show_grid()
     
     # Apresentar
@@ -253,6 +257,25 @@ def pico_output_screenshot(path=None):
     rect = sdl2.SDL_Rect(0, 0, zoom_dim[0], zoom_dim[1])
     return pico_output_screenshot_ext(path, rect)
 
+def _render_to_target(target, width, height):
+    """Renderiza conteúdo (textura + grade) em um target"""
+
+    # Definição da cor de fundo do target
+    sdl2.SDL_SetRenderTarget(REN, target)  # Define onde o renderer vai desenhar(None=tela, ou textura)
+    sdl2.SDL_RenderSetLogicalSize(REN, width, height)  # Define o tamanho lógico da área de renderização
+    sdl2.SDL_SetRenderDrawColor(REN, 119, 119, 119, 119)  # Define a cor de desenho(cinza)
+    sdl2.SDL_RenderClear(REN)  # Limpa o target com a cor definida
+    # Sobreposição da textura TEX no target
+    sdl2.SDL_RenderCopy(REN, TEX, None, None)  # Copia a textura TEX para o target atual
+    _show_grid() # Desenha a grade por cima da textura TEX se estiver habilitada
+
+def _restore_render_state(clip, target):
+    """Restaura o estado do renderer"""
+    zoom_dim = _zoom()
+    sdl2.SDL_RenderSetLogicalSize(REN, zoom_dim[0], zoom_dim[1])
+    sdl2.SDL_SetRenderTarget(REN, target)
+    sdl2.SDL_RenderSetClipRect(REN, clip)
+
 def pico_output_screenshot_ext(path, rect):
     """Tira um screenshot de uma região específica da tela"""
     import ctypes
@@ -264,30 +287,43 @@ def pico_output_screenshot_ext(path, rect):
     if not REN or not TEX:
         return None
     
-    # Alocar buffer
-    buf_size = 4 * rect.w * rect.h
-    buf = (ctypes.c_uint8 * buf_size)()
+    # Salvar estado atual do renderer para restaurar depois
+    clip = sdl2.SDL_Rect()  # Retângulo para armazenar a região de clipping atual
+    sdl2.SDL_RenderGetClipRect(REN, clip)  # Obtém a região de clipping atual e salva em clip
+    current_target = sdl2.SDL_GetRenderTarget(REN)  # Obtém o target atual(None=tela, ou textura)
     
-    # Ler pixels do renderer
-    sdl2.SDL_RenderReadPixels(REN, rect, sdl2.SDL_PIXELFORMAT_RGBA32, buf, 4 * rect.w)
-    
-    # Criar surface
-    surface = sdl2.SDL_CreateRGBSurfaceWithFormatFrom(
-        buf, rect.w, rect.h, 32, 4 * rect.w, sdl2.SDL_PIXELFORMAT_RGBA32
-    )
-    
-    if not surface:
+    # Cria textura temporária com o mesmo tamanho da janela
+    # Parâmetros: renderer, formato(RGBA 32 bits), acesso(target=permite renderizar nela), largura, altura
+    temp_texture = sdl2.SDL_CreateTexture(REN, sdl2.SDL_PIXELFORMAT_RGBA32, sdl2.SDL_TEXTUREACCESS_TARGET, S.dim_window[0], S.dim_window[1])  
+    if not temp_texture:
+        _restore_render_state(clip, current_target)
         return None
     
-    # Salva como PNG
-    path_bytes = path.encode('utf-8') if isinstance(path, str) else path
-    result = sdlimage.IMG_SavePNG(surface, path_bytes)
+    # Renderiza o conteúdo da textura TEX para a textura temporária temp_texture
+    # A partir daqui, o conteúdo da textura TEX é renderizado para a textura temporária temp_texture
+    # Assim como as operações de zoom, scroll, leitura de pixels, etc. são aplicadas na textura temporária temp_text
+    _render_to_target(temp_texture, S.dim_window[0], S.dim_window[1])
     
-    sdl2.SDL_FreeSurface(surface)
+    # Lê pixels da textura temporária
+    screen_rect = sdl2.SDL_Rect(0, 0, S.dim_window[0], S.dim_window[1])  # Retângulo: x=0, y=0, largura=janela[0], altura=janela[1]
+    buf = (ctypes.c_uint8 * (PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w * screen_rect.h))() # Calcula o tamanho do buffer em bytes
+    # Lê do temp_texture a região definida em screen_rect e salva no buffer buf
+    sdl2.SDL_RenderReadPixels(REN, screen_rect, sdl2.SDL_PIXELFORMAT_RGBA32, buf, PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w)
+    # Destrói a textura temporária temp_texture, já que não é mais necessária
+    sdl2.SDL_DestroyTexture(temp_texture)
     
-    if result == 0:
-        return path
-    return None
+    # Cria uma surface(imagem em memória) a partir do buffer buf
+    surface = sdl2.SDL_CreateRGBSurfaceWithFormatFrom(buf, screen_rect.w, screen_rect.h, 32, PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w, sdl2.SDL_PIXELFORMAT_RGBA32)
+    if not surface:
+        _restore_render_state(clip, current_target)
+        return None
+    
+    # Salva PNG
+    result = sdlimage.IMG_SavePNG(surface, path.encode('utf-8') if isinstance(path, str) else path)
+    sdl2.SDL_FreeSurface(surface) # Libera a surface da memória
+    _restore_render_state(clip, current_target) # Restaura o estado do renderer
+    
+    return path if result == 0 else None
 
 def pico_set_font(file, h):
     """Define a fonte"""
@@ -363,7 +399,7 @@ def pico_init(on):
         )
         
         # Configurar zoom
-        pico_set_zoom(S.zoom)
+        pico_set_zoom(S.zoom) # Aqui a textura TEX é definida como target
         
         # Carregar fonte embutida(tiny_ttf)
         pico_set_font(None, 0)

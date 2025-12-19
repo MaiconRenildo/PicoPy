@@ -25,3 +25,6 @@ PICO_STROKE = 1
 # Clip reset (usado para desabilitar clipping)
 PICO_CLIP_RESET = (0, 0, 0, 0)
 
+# Bytes por pixel no formato RGBA32
+PICO_BYTES_PER_PIXEL_RGBA32 = 4
+
