@@ -5,9 +5,6 @@ PICO_TITLE = "pico-SDL"
 PICO_DIM_WINDOW = (640, 360)
 PICO_DIM_WORLD = (64, 36)
 
-# Tamanho da tabela hash
-PICO_HASH = 128
-
 # Valores de anchor (horizontal)
 PICO_LEFT = 0
 PICO_CENTER = 50

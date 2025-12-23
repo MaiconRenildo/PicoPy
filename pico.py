@@ -21,7 +21,7 @@ from tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 WIN = None  # Janela(objeto da janela do sistema operacional)
 REN = None  # Renderer(responsável por desenhar na janela)
 TEX = None  # Textura(superfície de renderização alvo)
-_pico_hash = None  # Tabela hash (dict do Python)
+_pico_hash = None  # Tabela hash
 
 class PicoState:
     def __init__(self):
