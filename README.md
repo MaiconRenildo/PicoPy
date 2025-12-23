@@ -67,9 +67,6 @@ Para executar os testes, com o ambiente virtual ativado:
 pytest tests/
 ```
 
-**Exemplo de teste:**
-O arquivo `tests/test_init.py` testa a inicialização do pico-sdl, exibindo uma tela preta por 2 segundos.
-
 ## Dependências
 
 ### Bibliotecas do Sistema

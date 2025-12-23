@@ -9,7 +9,6 @@ from constants import (
     PICO_TITLE,
     PICO_DIM_WINDOW,
     PICO_DIM_WORLD,
-    PICO_HASH,
     PICO_CENTER,
     PICO_MIDDLE,
     PICO_FILL,
@@ -22,7 +21,7 @@ from tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 WIN = None  # Janela(objeto da janela do sistema operacional)
 REN = None  # Renderer(responsável por desenhar na janela)
 TEX = None  # Textura(superfície de renderização alvo)
-_pico_hash = None  # Tabela hash
+_pico_hash = None  # Tabela hash (dict do Python)
 
 class PicoState:
     def __init__(self):
@@ -53,39 +52,6 @@ class PicoState:
         self.zoom = (100, 100)
 
 S = PicoState()
-
-class PicoHash:
-    def __init__(self, num_buckets):
-        self.num_buckets = num_buckets
-        self.data = {}
-    
-    def add(self, key, value):
-        """Adiciona ou atualiza um valor na hash"""
-        self.data[key] = value
-        return 1
-    
-    def get(self, key):
-        """Obtém um valor da hash"""
-        return self.data.get(key)
-    
-    def remove(self, key):
-        """Remove um valor da hash"""
-        if key in self.data:
-            del self.data[key]
-            return 1
-        return 0
-
-def pico_hash_create(num_buckets):
-    """Cria tabela hash"""
-    try:
-        return PicoHash(num_buckets)
-    except:
-        return None
-
-def pico_hash_destroy(hash_table):
-    """Destrói a tabela hash"""
-    if hash_table is not None:
-        hash_table.data.clear()
 
 def pico_assert(condition):
     """Assert com mensagem de erro SDL"""
@@ -360,7 +326,7 @@ def pico_init(on):
     
     if on:
         # Criar hash
-        _pico_hash = pico_hash_create(PICO_HASH)
+        _pico_hash = {}
         
         # Inicializar SDL
         pico_assert(sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) == 0)
@@ -437,6 +403,5 @@ def pico_init(on):
         
         sdl2.SDL_Quit()
         
-        if _pico_hash:
-            pico_hash_destroy(_pico_hash)
-            _pico_hash = None
+        # Limpar hash
+        _pico_hash = None
