@@ -315,6 +315,39 @@ def pico_set_grid(on):
     S.grid = on
     _pico_output_present(0)
 
+# Funções auxiliares para cálculo de posição
+def _hanchor(x, w):
+    """Calcula posição horizontal com anchor aplicado"""
+    return x - (S.anchor_pos[0] * w) // 100
+
+def _vanchor(y, h):
+    """Calcula posição vertical com anchor aplicado"""
+    return y - (S.anchor_pos[1] * h) // 100
+
+def _X(v, w):
+    """Calcula coordenada X final (com anchor e scroll)"""
+    return _hanchor(v, w) - S.scroll[0]
+
+def _Y(v, h):
+    """Calcula coordenada Y final (com anchor e scroll)"""
+    return _vanchor(v, h) - S.scroll[1]
+
+# Funções de desenho
+def pico_output_draw_pixel(pos):
+    """Desenha um pixel na posição especificada"""
+    if not REN:
+        return
+    
+    # Calcula posição final com anchor e scroll (w=1, h=1 para pixel)
+    x = _X(pos[0], 1)
+    y = _Y(pos[1], 1)
+    
+    # Desenha o pixel
+    sdl2.SDL_RenderDrawPoint(REN, x, y)
+    
+    # Apresenta (sem forçar, respeita expert)
+    _pico_output_present(0)
+
 def pico_init(on):
     """
     Inicializa ou termina o pico-sdl
