@@ -1,14 +1,11 @@
-import os
-from pico import pico_init, pico_output_clear, pico_output_draw_pixel, pico_output_present
-from .utils import get_expected_image_path, capture_screenshot_for_comparison, compare_images
+from pico import pico_init, pico_output_clear, pico_output_draw_pixel
+from .utils import screenshot_and_compare
 
 
 def test_draw_pixel():
     """Testa o desenho de pixels e verifica se a imagem gerada corresponde à referência"""
-    expected_image_path = get_expected_image_path("draw_pixel.png")
     pico_init(1)
     try:
-        # Limpa a tela antes de desenhar os pixels
         pico_output_clear()
 
         pico_output_draw_pixel((32, 18)) # (64/2, 36/2)
@@ -22,11 +19,7 @@ def test_draw_pixel():
         pico_output_draw_pixel((5, 31))
         pico_output_draw_pixel((59, 31))
         
-        tmp_path = capture_screenshot_for_comparison(expected_image_path)
-        if tmp_path is None:
-            return
-        compare_images(tmp_path, expected_image_path)
-        os.unlink(tmp_path)  # Remove arquivo temporário
+        screenshot_and_compare("draw_pixel.png")
     finally:
         pico_init(0)
 
