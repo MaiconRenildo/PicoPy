@@ -43,3 +43,18 @@ def compare_images(actual_image_path, expected_image_path, error_message=None):
         if error_message is None:
             error_message = f"A imagem gerada não corresponde à imagem de referência"
         assert actual_data == expected_data, error_message
+
+
+def screenshot_and_compare(image_filename, error_message=None):
+    """
+    Função auxiliar que captura screenshot, compara com imagem de referência e limpa arquivo temporário.
+    """
+    expected_image_path = get_expected_image_path(image_filename)
+    tmp_path = capture_screenshot_for_comparison(expected_image_path)
+    if tmp_path is None:
+        return False
+    try:
+        compare_images(tmp_path, expected_image_path, error_message)
+        return True
+    finally:
+        os.unlink(tmp_path)  # Remove arquivo temporário
