@@ -336,16 +336,21 @@ def _Y(v, h):
 def pico_output_draw_pixel(pos):
     """Desenha um pixel na posição especificada"""
     if not REN:
-        return
-    
-    # Calcula posição final com anchor e scroll (w=1, h=1 para pixel)
+        return    
     x = _X(pos[0], 1)
     y = _Y(pos[1], 1)
-    
-    # Desenha o pixel
+
     sdl2.SDL_RenderDrawPoint(REN, x, y)
-    
-    # Apresenta (sem forçar, respeita expert)
+    _pico_output_present(0)
+
+def pico_output_draw_pixels(apos):
+    """Desenha múltiplos pixels"""
+    if not REN:
+        return
+    for pos in apos:
+        x = _X(pos[0], 1)
+        y = _Y(pos[1], 1)
+        sdl2.SDL_RenderDrawPoint(REN, x, y)
     _pico_output_present(0)
 
 def pico_init(on):
