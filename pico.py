@@ -106,6 +106,15 @@ def _copy_TEX_to_window():
     """Copia a textura principal do mundo(TEX) para a janela(BackBuffer)"""
     sdl2.SDL_RenderCopy(REN, TEX, None, None)
 
+def _create_texture(w, h):
+    """Cria uma nova textura"""
+    return sdl2.SDL_CreateTexture(
+        REN,
+        sdl2.SDL_PIXELFORMAT_RGBA32,
+        sdl2.SDL_TEXTUREACCESS_TARGET,
+        w, h
+    )
+
 def _show_on_screen():
     """Troca o conteúdo do FrontBuffer pelo BackBuffer, exibindo o que foi preparado"""
     sdl2.SDL_RenderPresent(REN)
@@ -211,13 +220,7 @@ def pico_set_zoom(pct):
         sdl2.SDL_DestroyTexture(TEX)
     
     # Criar nova textura
-    TEX = sdl2.SDL_CreateTexture(
-        REN,
-        sdl2.SDL_PIXELFORMAT_RGBA32,
-        sdl2.SDL_TEXTUREACCESS_TARGET,
-        new[0],
-        new[1]
-    )
+    TEX = _create_texture(new[0], new[1])
     pico_assert(TEX is not None)
     
     _define_target(TEX, new[0], new[1])
@@ -254,12 +257,7 @@ def pico_output_screenshot_ext(path, rect):
     
     # Cria textura temporária com o mesmo tamanho da janela
     # Parâmetros: renderer, formato(RGBA 32 bits), acesso(target=permite renderizar nela), largura, altura
-    temp_texture = sdl2.SDL_CreateTexture(REN,
-        sdl2.SDL_PIXELFORMAT_RGBA32,
-        sdl2.SDL_TEXTUREACCESS_TARGET,
-        S.dim_window[0],
-        S.dim_window[1]
-    )  
+    temp_texture = _create_texture(S.dim_window[0], S.dim_window[1])
     if not temp_texture:
         _restore_render_state(clip, current_target)
         return None
