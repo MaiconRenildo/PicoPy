@@ -98,8 +98,8 @@ def _define_target(target, w, h):
         sdl2.SDL_RenderSetLogicalSize(REN, w, h)
         sdl2.SDL_SetRenderTarget(REN, target)
 
-def _clean_target_with_defined_color():
-    """Limpa o target atual com a cor definida previamente via _pico_set_color"""
+def _clear_target_with_defined_color():
+    """Limpa o target atual com a cor definida previamente"""
     sdl2.SDL_RenderClear(REN)
 
 def _copy_TEX_to_window():
@@ -141,7 +141,7 @@ def _pico_output_present(force):
     # Apresenta
     _change_target_to_window()
     _pico_set_color(PICO_COLOR_GRAY)
-    _clean_target_with_defined_color()
+    _clear_target_with_defined_color()
     _copy_TEX_to_window() # Seta o conteúdo no BackBuffer da janela
     _show_grid() # Desenha a grade POR CIMA(no BackBuffer da janela)
     _show_on_screen()
@@ -179,7 +179,7 @@ def pico_output_clear():
     if REN:
         _pico_set_color(S.color_clear)
         if _noclip():
-            _clean_target_with_defined_color() # Limpa o target inteiro
+            _clear_target_with_defined_color() # Limpa o target inteiro
         else:
             clip = _get_current_clip()
             sdl2.SDL_RenderFillRect(REN, clip) # Preenche a região do clip com a cor de limpeza
@@ -268,7 +268,7 @@ def pico_output_screenshot_ext(path, rect):
     # Assim como as operações de zoom, scroll, leitura de pixels, etc. são aplicadas na textura temporária temp_text
     _define_target(temp_texture, S.dim_window[0], S.dim_window[1])
     _pico_set_color(PICO_COLOR_GRAY)
-    _clean_target_with_defined_color()
+    _clear_target_with_defined_color()
     _copy_TEX_to_window()
     _show_grid() # Desenha a grade na textura temporária, pois a grade não é desenhada na TEXT
 
