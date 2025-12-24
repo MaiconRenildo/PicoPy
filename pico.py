@@ -65,21 +65,13 @@ def _get_current_clip():
     sdl2.SDL_RenderGetClipRect(REN, clip)
     return clip
 
-def _get_current_target():
-    """Obtém o target de renderização atual do renderizador(None=janela(BackBuffer))"""
-    return sdl2.SDL_GetRenderTarget(REN)
-
 def _define_clip(clip):
     """Define a região de clipping do renderizador"""
     sdl2.SDL_RenderSetClipRect(REN, clip)
 
-def _pico_set_color(color):
-    """Define a cor de desenho do renderizador"""
-    sdl2.SDL_SetRenderDrawColor(REN, color[0], color[1], color[2], color[3])
-
-def _restore_draw_color():
-    """Restaura a cor de desenho original (S.color_draw)"""
-    _pico_set_color(S.color_draw)
+def _get_current_target():
+    """Obtém o target de renderização atual do renderizador(None=janela(BackBuffer))"""
+    return sdl2.SDL_GetRenderTarget(REN)
 
 def _define_target(target, w, h):
     """Define o target de renderização e o tamanho lógico"""
@@ -95,23 +87,6 @@ def _clear_target_with_defined_color():
     """Limpa o target atual com a cor definida previamente"""
     sdl2.SDL_RenderClear(REN)
 
-def _copy_TEX_to_window():
-    """Copia a textura principal do mundo(TEX) para a janela(BackBuffer)"""
-    sdl2.SDL_RenderCopy(REN, TEX, None, None)
-
-def _create_texture(w, h):
-    """Cria uma nova textura"""
-    return sdl2.SDL_CreateTexture(
-        REN,
-        sdl2.SDL_PIXELFORMAT_RGBA32,
-        sdl2.SDL_TEXTUREACCESS_TARGET,
-        w, h
-    )
-
-def _show_on_screen():
-    """Troca o conteúdo do FrontBuffer pelo BackBuffer, exibindo o que foi preparado"""
-    sdl2.SDL_RenderPresent(REN)
-
 def _change_target_to_window():
     """Direciona o desenho para a janela(BackBuffer)
     
@@ -125,33 +100,43 @@ def _change_target_to_TEX():
     zoom_dim = _zoom()
     _define_target(TEX, zoom_dim[0], zoom_dim[1])
 
+def _restore_render_state(clip, target):
+    """Restaura o estado do renderer"""
+    zoom_dim = _zoom()
+    _define_target(target, zoom_dim[0], zoom_dim[1])
+    _define_clip(clip)
+
+def _pico_set_color(color):
+    """Define a cor de desenho do renderizador"""
+    sdl2.SDL_SetRenderDrawColor(REN, color[0], color[1], color[2], color[3])
+
+def _restore_draw_color():
+    """Restaura a cor de desenho original (S.color_draw)"""
+    _pico_set_color(S.color_draw)
+
+def _create_texture(w, h):
+    """Cria uma nova textura"""
+    return sdl2.SDL_CreateTexture(
+        REN,
+        sdl2.SDL_PIXELFORMAT_RGBA32,
+        sdl2.SDL_TEXTUREACCESS_TARGET,
+        w, h
+    )
+
+def _copy_TEX_to_window():
+    """Copia a textura principal do mundo(TEX) para a janela(BackBuffer)"""
+    sdl2.SDL_RenderCopy(REN, TEX, None, None)
+
+def _show_on_screen():
+    """Troca o conteúdo do FrontBuffer pelo BackBuffer, exibindo o que foi preparado"""
+    sdl2.SDL_RenderPresent(REN)
+
 def _zoom():
     """Calcula dimensões com zoom aplicado"""
     return (
         S.dim_world[0] * S.zoom[0] // 100,
         S.dim_world[1] * S.zoom[1] // 100
     )
-
-def _pico_output_present(force):
-    """Apresenta o conteúdo renderizado da textura TEX para a tela"""
-    if S.expert and not force:
-        return
-    
-    # Salva
-    clip = _get_current_clip()
-
-    # Apresenta
-    _change_target_to_window()
-    _pico_set_color(PICO_COLOR_GRAY)
-    _clear_target_with_defined_color()
-    _copy_TEX_to_window() # Seta o conteúdo no BackBuffer da janela
-    _show_grid() # Desenha a grade POR CIMA(no BackBuffer da janela)
-    _show_on_screen()
-    _restore_draw_color()
-    
-    # Restaura
-    _change_target_to_TEX()
-    _define_clip(clip)
 
 def _show_grid():
     """Mostra a grade se estiver habilitada"""
@@ -176,10 +161,25 @@ def _show_grid():
     
     _restore_draw_color()
 
-def _restore_render_state(clip, target):
-    """Restaura o estado do renderer"""
-    zoom_dim = _zoom()
-    _define_target(target, zoom_dim[0], zoom_dim[1])
+def _pico_output_present(force):
+    """Apresenta o conteúdo renderizado da textura TEX para a tela"""
+    if S.expert and not force:
+        return
+    
+    # Salva
+    clip = _get_current_clip()
+
+    # Apresenta
+    _change_target_to_window()
+    _pico_set_color(PICO_COLOR_GRAY)
+    _clear_target_with_defined_color()
+    _copy_TEX_to_window() # Seta o conteúdo no BackBuffer da janela
+    _show_grid() # Desenha a grade POR CIMA(no BackBuffer da janela)
+    _show_on_screen()
+    _restore_draw_color()
+    
+    # Restaura
+    _change_target_to_TEX()
     _define_clip(clip)
 
 # Funções auxiliares para cálculo de posição
