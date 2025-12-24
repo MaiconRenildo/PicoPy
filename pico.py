@@ -73,7 +73,7 @@ def _get_current_clip():
     return clip
 
 def _get_current_target():
-    """Obtém o alvo de renderização atual do renderizador(None=janela(BackBuffer))"""
+    """Obtém o target de renderização atual do renderizador(None=janela(BackBuffer))"""
     return sdl2.SDL_GetRenderTarget(REN)
 
 def _define_clip(clip):
@@ -88,8 +88,8 @@ def _restore_draw_color():
     """Restaura a cor de desenho original (S.color_draw)"""
     _pico_set_color(S.color_draw)
 
-def _pico_target(target, w, h):
-    """Define o alvo de renderização e o tamanho lógico"""
+def _define_target(target, w, h):
+    """Define o target de renderização e o tamanho lógico"""
     # Parece ser o padrão do pico-sdl, mas não é claro o motivo.
     if target is None:
         sdl2.SDL_SetRenderTarget(REN, target)
@@ -99,7 +99,7 @@ def _pico_target(target, w, h):
         sdl2.SDL_SetRenderTarget(REN, target)
 
 def _clean_target_with_defined_color():
-    """Limpa o alvo atual com a cor definida previamente via _pico_set_color"""
+    """Limpa o target atual com a cor definida previamente via _pico_set_color"""
     sdl2.SDL_RenderClear(REN)
 
 def _copy_TEX_to_window():
@@ -116,12 +116,12 @@ def _change_target_to_window():
     Obs: Ao mudar target, o SDL reseta automaticamente o clip para o tamanho total
     do novo target.
     """
-    _pico_target(None, S.dim_window[0], S.dim_window[1]) # None = direciona para a janela física do sistema
+    _define_target(None, S.dim_window[0], S.dim_window[1]) # None = direciona para a janela física do sistema
 
 def _change_target_to_TEX():
     """Direciona o desenho de volta para a TEX"""
     zoom_dim = _zoom()
-    _pico_target(TEX, zoom_dim[0], zoom_dim[1])
+    _define_target(TEX, zoom_dim[0], zoom_dim[1])
 
 def _zoom():
     """Calcula dimensões com zoom aplicado"""
@@ -220,7 +220,7 @@ def pico_set_zoom(pct):
     )
     pico_assert(TEX is not None)
     
-    _pico_target(TEX, new[0], new[1])
+    _define_target(TEX, new[0], new[1])
     
     # Define clip
     clip = sdl2.SDL_Rect(0, 0, new[0], new[1])
@@ -235,7 +235,7 @@ def pico_output_screenshot(path=None):
 def _restore_render_state(clip, target):
     """Restaura o estado do renderer"""
     zoom_dim = _zoom()
-    _pico_target(target, zoom_dim[0], zoom_dim[1])
+    _define_target(target, zoom_dim[0], zoom_dim[1])
     _define_clip(clip)
 
 def pico_output_screenshot_ext(path, rect):
@@ -266,7 +266,7 @@ def pico_output_screenshot_ext(path, rect):
 
     # A partir daqui, o conteúdo da textura TEX é renderizado para a textura temporária temp_texture
     # Assim como as operações de zoom, scroll, leitura de pixels, etc. são aplicadas na textura temporária temp_text
-    _pico_target(temp_texture, S.dim_window[0], S.dim_window[1])
+    _define_target(temp_texture, S.dim_window[0], S.dim_window[1])
     _pico_set_color(PICO_COLOR_GRAY)
     _clean_target_with_defined_color()
     _copy_TEX_to_window()
