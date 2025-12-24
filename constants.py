@@ -25,3 +25,5 @@ PICO_CLIP_RESET = (0, 0, 0, 0)
 # Bytes por pixel no formato RGBA32
 PICO_BYTES_PER_PIXEL_RGBA32 = 4
 
+# Cor cinza padrão usada para fundo e grade
+PICO_COLOR_GRAY = (119, 119, 119, 119)

@@ -14,6 +14,7 @@ from constants import (
     PICO_FILL,
     PICO_CLIP_RESET,
     PICO_BYTES_PER_PIXEL_RGBA32,
+    PICO_COLOR_GRAY,
 )
 from tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 
@@ -27,7 +28,7 @@ class PicoState:
     def __init__(self):
         # Anchor(ponto de referência)
         # Define qual ponto do objeto é usado como referência para posicionamento ao dar zoom/mover
-        self.anchor_pos = (PICO_CENTER, PICO_MIDDLE)
+        self.anchor_pos = (PICO_CENTER, PICO_MIDDLE) # Por padrão, centraliza o objeto
         # Define qual ponto do objeto é usado como centro de rotação ao rotacionar algo
         self.anchor_rotate = (PICO_CENTER, PICO_MIDDLE)
         
@@ -65,6 +66,63 @@ def _noclip():
     """Verifica se não há clip ativo"""
     return (S.clip[2] == PICO_CLIP_RESET[2]) or (S.clip[3] == PICO_CLIP_RESET[3])
 
+def _get_current_clip():
+    """Obtém a região de clipping atual do renderizador e retorna um objeto SDL_Rect"""
+    clip = sdl2.SDL_Rect()
+    sdl2.SDL_RenderGetClipRect(REN, clip)
+    return clip
+
+def _get_current_target():
+    """Obtém o alvo de renderização atual do renderizador(None=janela(BackBuffer))"""
+    return sdl2.SDL_GetRenderTarget(REN)
+
+def _define_clip(clip):
+    """Define a região de clipping do renderizador"""
+    sdl2.SDL_RenderSetClipRect(REN, clip)
+
+def _pico_set_color(color):
+    """Define a cor de desenho do renderizador"""
+    sdl2.SDL_SetRenderDrawColor(REN, color[0], color[1], color[2], color[3])
+
+def _restore_draw_color():
+    """Restaura a cor de desenho original (S.color_draw)"""
+    _pico_set_color(S.color_draw)
+
+def _pico_target(target, w, h):
+    """Define o alvo de renderização e o tamanho lógico"""
+    # Parece ser o padrão do pico-sdl, mas não é claro o motivo.
+    if target is None:
+        sdl2.SDL_SetRenderTarget(REN, target)
+        sdl2.SDL_RenderSetLogicalSize(REN, w, h)
+    else:
+        sdl2.SDL_RenderSetLogicalSize(REN, w, h)
+        sdl2.SDL_SetRenderTarget(REN, target)
+
+def _clean_target_with_defined_color():
+    """Limpa o alvo atual com a cor definida previamente via _pico_set_color"""
+    sdl2.SDL_RenderClear(REN)
+
+def _copy_TEX_to_window():
+    """Copia a textura principal do mundo(TEX) para a janela(BackBuffer)"""
+    sdl2.SDL_RenderCopy(REN, TEX, None, None)
+
+def _show_on_screen():
+    """Troca o conteúdo do FrontBuffer pelo BackBuffer, exibindo o que foi preparado"""
+    sdl2.SDL_RenderPresent(REN)
+
+def _change_target_to_window():
+    """Direciona o desenho para a janela(BackBuffer)
+    
+    Obs: Ao mudar target, o SDL reseta automaticamente o clip para o tamanho total
+    do novo target.
+    """
+    _pico_target(None, S.dim_window[0], S.dim_window[1]) # None = direciona para a janela física do sistema
+
+def _change_target_to_TEX():
+    """Direciona o desenho de volta para a TEX"""
+    zoom_dim = _zoom()
+    _pico_target(TEX, zoom_dim[0], zoom_dim[1])
+
 def _zoom():
     """Calcula dimensões com zoom aplicado"""
     return (
@@ -73,55 +131,32 @@ def _zoom():
     )
 
 def _pico_output_present(force):
-    """Apresenta o conteúdo renderizado"""
+    """Apresenta o conteúdo renderizado da textura TEX para a tela"""
     if S.expert and not force:
         return
     
-    # Salva a região de clipping atual
-    clip = sdl2.SDL_Rect()
-    sdl2.SDL_RenderGetClipRect(REN, clip)
+    # Salva
+    clip = _get_current_clip()
+
+    # Apresenta
+    _change_target_to_window()
+    _pico_set_color(PICO_COLOR_GRAY)
+    _clean_target_with_defined_color()
+    _copy_TEX_to_window() # Seta o conteúdo no BackBuffer da janela
+    _show_grid() # Desenha a grade POR CIMA(no BackBuffer da janela)
+    _show_on_screen()
+    _restore_draw_color()
     
-    # Mudar target para tela
-    sdl2.SDL_SetRenderTarget(REN, None)
-    sdl2.SDL_RenderSetLogicalSize(REN, S.dim_window[0], S.dim_window[1])
-    
-    # Limpar com cor cinza
-    sdl2.SDL_SetRenderDrawColor(REN, 119, 119, 119, 119)
-    sdl2.SDL_RenderClear(REN)
-    
-    # Copiar a textura TEX para a tela
-    sdl2.SDL_RenderCopy(REN, TEX, None, None)
-    
-    # Mostrar grid na tela somente(o target aqui já é None)
-    # A grade é desenhada diretamente na tela, portanto, ao fazer screenshot, a grade não é copiada
-    # automaticamentepara o arquivo da screenshot. Nesse caso é necessário forçar a apresentação da grade na tela
-    # para garantir que ela seja salva no arquivo
-    _show_grid()
-    
-    # Apresentar
-    sdl2.SDL_RenderPresent(REN)
-    
-    # Restaurar cor de desenho
-    sdl2.SDL_SetRenderDrawColor(
-        REN,
-        S.color_draw[0],
-        S.color_draw[1],
-        S.color_draw[2],
-        S.color_draw[3]
-    )
-    
-    # Restaurar target e clip
-    zoom_dim = _zoom()
-    sdl2.SDL_RenderSetLogicalSize(REN, zoom_dim[0], zoom_dim[1])
-    sdl2.SDL_SetRenderTarget(REN, TEX)
-    sdl2.SDL_RenderSetClipRect(REN, clip)
+    # Restaura
+    _change_target_to_TEX()
+    _define_clip(clip)
 
 def _show_grid():
     """Mostra a grade se estiver habilitada"""
     if not S.grid:
         return
     
-    sdl2.SDL_SetRenderDrawColor(REN, 119, 119, 119, 119)
+    _pico_set_color(PICO_COLOR_GRAY)
     
     zoom_dim = _zoom()
     
@@ -137,43 +172,18 @@ def _show_grid():
         for j in range(0, S.dim_window[1] + 1, step):
             sdl2.SDL_RenderDrawLine(REN, 0, j, S.dim_window[0], j)
     
-    # Restaurar cor de desenho
-    sdl2.SDL_SetRenderDrawColor(
-        REN,
-        S.color_draw[0],
-        S.color_draw[1],
-        S.color_draw[2],
-        S.color_draw[3]
-    )
+    _restore_draw_color()
 
 def pico_output_clear():
-    """Limpa a tela com a cor de limpeza"""
+    """Limpa o target atual com a cor de limpeza"""
     if REN:
-        sdl2.SDL_SetRenderDrawColor(
-            REN,
-            S.color_clear[0],
-            S.color_clear[1],
-            S.color_clear[2],
-            S.color_clear[3]
-        )
+        _pico_set_color(S.color_clear)
         if _noclip():
-            sdl2.SDL_RenderClear(REN)
+            _clean_target_with_defined_color() # Limpa o target inteiro
         else:
-            # Preencher região do clip
-            clip = sdl2.SDL_Rect()
-            sdl2.SDL_RenderGetClipRect(REN, clip)
-            sdl2.SDL_RenderFillRect(REN, clip)
-        
-        # Restaurar cor de desenho
-        sdl2.SDL_SetRenderDrawColor(
-            REN,
-            S.color_draw[0],
-            S.color_draw[1],
-            S.color_draw[2],
-            S.color_draw[3]
-        )
-        
-        # Apresentar
+            clip = _get_current_clip()
+            sdl2.SDL_RenderFillRect(REN, clip) # Preenche a região do clip com a cor de limpeza
+        _restore_draw_color()
         _pico_output_present(0)
 
 def pico_output_present():
@@ -200,7 +210,7 @@ def pico_set_zoom(pct):
     if TEX:
         sdl2.SDL_DestroyTexture(TEX)
     
-        # Criar nova textura
+    # Criar nova textura
     TEX = sdl2.SDL_CreateTexture(
         REN,
         sdl2.SDL_PIXELFORMAT_RGBA32,
@@ -210,12 +220,11 @@ def pico_set_zoom(pct):
     )
     pico_assert(TEX is not None)
     
-    sdl2.SDL_RenderSetLogicalSize(REN, new[0], new[1])
-    sdl2.SDL_SetRenderTarget(REN, TEX)
+    _pico_target(TEX, new[0], new[1])
     
     # Define clip
     clip = sdl2.SDL_Rect(0, 0, new[0], new[1])
-    sdl2.SDL_RenderSetClipRect(REN, clip)
+    _define_clip(clip)
 
 def pico_output_screenshot(path=None):
     """Tira um screenshot da tela"""
@@ -223,24 +232,11 @@ def pico_output_screenshot(path=None):
     rect = sdl2.SDL_Rect(0, 0, zoom_dim[0], zoom_dim[1])
     return pico_output_screenshot_ext(path, rect)
 
-def _render_to_target(target, width, height):
-    """Renderiza conteúdo (textura + grade) em um target"""
-
-    # Definição da cor de fundo do target
-    sdl2.SDL_SetRenderTarget(REN, target)  # Define onde o renderer vai desenhar(None=tela, ou textura)
-    sdl2.SDL_RenderSetLogicalSize(REN, width, height)  # Define o tamanho lógico da área de renderização
-    sdl2.SDL_SetRenderDrawColor(REN, 119, 119, 119, 119)  # Define a cor de desenho(cinza)
-    sdl2.SDL_RenderClear(REN)  # Limpa o target com a cor definida
-    # Sobreposição da textura TEX no target
-    sdl2.SDL_RenderCopy(REN, TEX, None, None)  # Copia a textura TEX para o target atual
-    _show_grid() # Desenha a grade por cima da textura TEX se estiver habilitada
-
 def _restore_render_state(clip, target):
     """Restaura o estado do renderer"""
     zoom_dim = _zoom()
-    sdl2.SDL_RenderSetLogicalSize(REN, zoom_dim[0], zoom_dim[1])
-    sdl2.SDL_SetRenderTarget(REN, target)
-    sdl2.SDL_RenderSetClipRect(REN, clip)
+    _pico_target(target, zoom_dim[0], zoom_dim[1])
+    _define_clip(clip)
 
 def pico_output_screenshot_ext(path, rect):
     """Tira um screenshot de uma região específica da tela"""
@@ -253,23 +249,29 @@ def pico_output_screenshot_ext(path, rect):
     if not REN or not TEX:
         return None
     
-    # Salvar estado atual do renderer para restaurar depois
-    clip = sdl2.SDL_Rect()  # Retângulo para armazenar a região de clipping atual
-    sdl2.SDL_RenderGetClipRect(REN, clip)  # Obtém a região de clipping atual e salva em clip
-    current_target = sdl2.SDL_GetRenderTarget(REN)  # Obtém o target atual(None=tela, ou textura)
+    clip = _get_current_clip()
+    current_target = _get_current_target()
     
     # Cria textura temporária com o mesmo tamanho da janela
     # Parâmetros: renderer, formato(RGBA 32 bits), acesso(target=permite renderizar nela), largura, altura
-    temp_texture = sdl2.SDL_CreateTexture(REN, sdl2.SDL_PIXELFORMAT_RGBA32, sdl2.SDL_TEXTUREACCESS_TARGET, S.dim_window[0], S.dim_window[1])  
+    temp_texture = sdl2.SDL_CreateTexture(REN,
+        sdl2.SDL_PIXELFORMAT_RGBA32,
+        sdl2.SDL_TEXTUREACCESS_TARGET,
+        S.dim_window[0],
+        S.dim_window[1]
+    )  
     if not temp_texture:
         _restore_render_state(clip, current_target)
         return None
-    
-    # Renderiza o conteúdo da textura TEX para a textura temporária temp_texture
+
     # A partir daqui, o conteúdo da textura TEX é renderizado para a textura temporária temp_texture
     # Assim como as operações de zoom, scroll, leitura de pixels, etc. são aplicadas na textura temporária temp_text
-    _render_to_target(temp_texture, S.dim_window[0], S.dim_window[1])
-    
+    _pico_target(temp_texture, S.dim_window[0], S.dim_window[1])
+    _pico_set_color(PICO_COLOR_GRAY)
+    _clean_target_with_defined_color()
+    _copy_TEX_to_window()
+    _show_grid() # Desenha a grade na textura temporária, pois a grade não é desenhada na TEXT
+
     # Lê pixels da textura temporária
     screen_rect = sdl2.SDL_Rect(0, 0, S.dim_window[0], S.dim_window[1])  # Retângulo: x=0, y=0, largura=janela[0], altura=janela[1]
     buf = (ctypes.c_uint8 * (PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w * screen_rect.h))() # Calcula o tamanho do buffer em bytes
@@ -332,7 +334,6 @@ def _Y(v, h):
     """Calcula coordenada Y final (com anchor e scroll)"""
     return _vanchor(v, h) - S.scroll[1]
 
-# Funções de desenho
 def pico_output_draw_pixel(pos):
     """Desenha um pixel na posição especificada"""
     if not REN:
