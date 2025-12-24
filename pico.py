@@ -54,14 +54,7 @@ class PicoState:
 
 S = PicoState()
 
-def pico_assert(condition):
-    """Assert com mensagem de erro SDL"""
-    if not condition:
-        error = SDL_GetError()
-        if error:
-            print(f"SDL ERROR: {error.decode('utf-8')}", file=sys.stderr)
-        assert False, "SDL ERROR"
-
+####################### PRIVATE FUNCTIONS #######################
 def _noclip():
     """Verifica se não há clip ativo"""
     return (S.clip[2] == PICO_CLIP_RESET[2]) or (S.clip[3] == PICO_CLIP_RESET[3])
@@ -183,137 +176,11 @@ def _show_grid():
     
     _restore_draw_color()
 
-def pico_output_clear():
-    """Limpa o target atual com a cor de limpeza"""
-    if REN:
-        _pico_set_color(S.color_clear)
-        if _noclip():
-            _clear_target_with_defined_color() # Limpa o target inteiro
-        else:
-            clip = _get_current_clip()
-            sdl2.SDL_RenderFillRect(REN, clip) # Preenche a região do clip com a cor de limpeza
-        _restore_draw_color()
-        _pico_output_present(0)
-
-def pico_output_present():
-    """Apresenta o conteúdo renderizado na tela"""
-    if REN and TEX:
-        _pico_output_present(1)
-
-def pico_set_zoom(pct):
-    """Define o zoom"""
-    old = _zoom()
-    S.zoom = pct
-    new = _zoom()
-    
-    dx = new[0] - old[0]
-    dy = new[1] - old[1]
-    
-    # Ajusta scroll baseado no anchor
-    S.scroll = (
-        S.scroll[0] - (dx * S.anchor_pos[0] // 100),
-        S.scroll[1] - (dy * S.anchor_pos[1] // 100)
-    )
-    
-    global TEX
-    if TEX:
-        sdl2.SDL_DestroyTexture(TEX)
-    
-    # Criar nova textura
-    TEX = _create_texture(new[0], new[1])
-    pico_assert(TEX is not None)
-    
-    _define_target(TEX, new[0], new[1])
-    
-    # Define clip
-    clip = sdl2.SDL_Rect(0, 0, new[0], new[1])
-    _define_clip(clip)
-
-def pico_output_screenshot(path=None):
-    """Tira um screenshot da tela"""
-    zoom_dim = _zoom()
-    rect = sdl2.SDL_Rect(0, 0, zoom_dim[0], zoom_dim[1])
-    return pico_output_screenshot_ext(path, rect)
-
 def _restore_render_state(clip, target):
     """Restaura o estado do renderer"""
     zoom_dim = _zoom()
     _define_target(target, zoom_dim[0], zoom_dim[1])
     _define_clip(clip)
-
-def pico_output_screenshot_ext(path, rect):
-    """Tira um screenshot de uma região específica da tela"""
-    import ctypes
-    from datetime import datetime
-    
-    if path is None:
-        path = f"pico-sdl-{datetime.now().strftime('%Y%m%d-%H%M%S')}.png"
-    
-    if not REN or not TEX:
-        return None
-    
-    clip = _get_current_clip()
-    current_target = _get_current_target()
-    
-    # Cria textura temporária com o mesmo tamanho da janela
-    # Parâmetros: renderer, formato(RGBA 32 bits), acesso(target=permite renderizar nela), largura, altura
-    temp_texture = _create_texture(S.dim_window[0], S.dim_window[1])
-    if not temp_texture:
-        _restore_render_state(clip, current_target)
-        return None
-
-    # A partir daqui, o conteúdo da textura TEX é renderizado para a textura temporária temp_texture
-    # Assim como as operações de zoom, scroll, leitura de pixels, etc. são aplicadas na textura temporária temp_text
-    _define_target(temp_texture, S.dim_window[0], S.dim_window[1])
-    _pico_set_color(PICO_COLOR_GRAY)
-    _clear_target_with_defined_color()
-    _copy_TEX_to_window()
-    _show_grid() # Desenha a grade na textura temporária, pois a grade não é desenhada na TEXT
-
-    # Lê pixels da textura temporária
-    screen_rect = sdl2.SDL_Rect(0, 0, S.dim_window[0], S.dim_window[1])  # Retângulo: x=0, y=0, largura=janela[0], altura=janela[1]
-    buf = (ctypes.c_uint8 * (PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w * screen_rect.h))() # Calcula o tamanho do buffer em bytes
-    # Lê do temp_texture a região definida em screen_rect e salva no buffer buf
-    sdl2.SDL_RenderReadPixels(REN, screen_rect, sdl2.SDL_PIXELFORMAT_RGBA32, buf, PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w)
-    # Destrói a textura temporária temp_texture, já que não é mais necessária
-    sdl2.SDL_DestroyTexture(temp_texture)
-    
-    # Cria uma surface(imagem em memória) a partir do buffer buf
-    surface = sdl2.SDL_CreateRGBSurfaceWithFormatFrom(buf, screen_rect.w, screen_rect.h, 32, PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w, sdl2.SDL_PIXELFORMAT_RGBA32)
-    if not surface:
-        _restore_render_state(clip, current_target)
-        return None
-    
-    # Salva PNG
-    result = sdlimage.IMG_SavePNG(surface, path.encode('utf-8') if isinstance(path, str) else path)
-    sdl2.SDL_FreeSurface(surface) # Libera a surface da memória
-    _restore_render_state(clip, current_target) # Restaura o estado do renderer
-    
-    return path if result == 0 else None
-
-def pico_set_font(file, h):
-    """Define a fonte"""
-    if h == 0:
-        h = max(8, S.dim_world[1] // 10)
-    S.font_h = h
-    
-    if S.font_ttf is not None:
-        sdlttf.TTF_CloseFont(S.font_ttf)
-        S.font_ttf = None
-    
-    if file is None:
-        # Carregar fonte embutida
-        rw = sdl2.SDL_RWFromConstMem(pico_tiny_ttf, pico_tiny_ttf_len)
-        S.font_ttf = sdlttf.TTF_OpenFontRW(rw, 1, S.font_h)
-    else:
-        S.font_ttf = sdlttf.TTF_OpenFont(file.encode('utf-8'), S.font_h)
-    
-    pico_assert(S.font_ttf is not None)
-
-def pico_set_grid(on):
-    """Define se a grade deve ser exibida"""
-    S.grid = on
-    _pico_output_present(0)
 
 # Funções auxiliares para cálculo de posição
 def _hanchor(x, w):
@@ -331,27 +198,9 @@ def _X(v, w):
 def _Y(v, h):
     """Calcula coordenada Y final (com anchor e scroll)"""
     return _vanchor(v, h) - S.scroll[1]
+#################################################################
 
-def pico_output_draw_pixel(pos):
-    """Desenha um pixel na posição especificada"""
-    if not REN:
-        return    
-    x = _X(pos[0], 1)
-    y = _Y(pos[1], 1)
-
-    sdl2.SDL_RenderDrawPoint(REN, x, y)
-    _pico_output_present(0)
-
-def pico_output_draw_pixels(apos):
-    """Desenha múltiplos pixels"""
-    if not REN:
-        return
-    for pos in apos:
-        x = _X(pos[0], 1)
-        y = _Y(pos[1], 1)
-        sdl2.SDL_RenderDrawPoint(REN, x, y)
-    _pico_output_present(0)
-
+######################### API FUNCTIONS #########################
 def pico_init(on):
     """
     Inicializa ou termina o pico-sdl
@@ -442,3 +291,158 @@ def pico_init(on):
         
         # Limpar hash
         _pico_hash = None
+
+def pico_assert(condition):
+    """Assert com mensagem de erro SDL"""
+    if not condition:
+        error = SDL_GetError()
+        if error:
+            print(f"SDL ERROR: {error.decode('utf-8')}", file=sys.stderr)
+        assert False, "SDL ERROR"
+
+def pico_output_clear():
+    """Limpa o target atual com a cor de limpeza"""
+    if REN:
+        _pico_set_color(S.color_clear)
+        if _noclip():
+            _clear_target_with_defined_color() # Limpa o target inteiro
+        else:
+            clip = _get_current_clip()
+            sdl2.SDL_RenderFillRect(REN, clip) # Preenche a região do clip com a cor de limpeza
+        _restore_draw_color()
+        _pico_output_present(0)
+
+def pico_output_present():
+    """Apresenta o conteúdo renderizado na tela"""
+    if REN and TEX:
+        _pico_output_present(1)
+
+def pico_set_zoom(pct):
+    """Define o zoom"""
+    old = _zoom()
+    S.zoom = pct
+    new = _zoom()
+    
+    dx = new[0] - old[0]
+    dy = new[1] - old[1]
+    
+    # Ajusta scroll baseado no anchor
+    S.scroll = (
+        S.scroll[0] - (dx * S.anchor_pos[0] // 100),
+        S.scroll[1] - (dy * S.anchor_pos[1] // 100)
+    )
+    
+    global TEX
+    if TEX:
+        sdl2.SDL_DestroyTexture(TEX)
+    
+    # Criar nova textura
+    TEX = _create_texture(new[0], new[1])
+    pico_assert(TEX is not None)
+    
+    _define_target(TEX, new[0], new[1])
+    
+    # Define clip
+    clip = sdl2.SDL_Rect(0, 0, new[0], new[1])
+    _define_clip(clip)
+
+def pico_output_screenshot(path=None):
+    """Tira um screenshot da tela"""
+    zoom_dim = _zoom()
+    rect = sdl2.SDL_Rect(0, 0, zoom_dim[0], zoom_dim[1])
+    return pico_output_screenshot_ext(path, rect)
+
+def pico_output_screenshot_ext(path, rect):
+    """Tira um screenshot de uma região específica da tela"""
+    import ctypes
+    from datetime import datetime
+    
+    if path is None:
+        path = f"pico-sdl-{datetime.now().strftime('%Y%m%d-%H%M%S')}.png"
+    
+    if not REN or not TEX:
+        return None
+    
+    clip = _get_current_clip()
+    current_target = _get_current_target()
+    
+    # Cria textura temporária com o mesmo tamanho da janela
+    # Parâmetros: renderer, formato(RGBA 32 bits), acesso(target=permite renderizar nela), largura, altura
+    temp_texture = _create_texture(S.dim_window[0], S.dim_window[1])
+    if not temp_texture:
+        _restore_render_state(clip, current_target)
+        return None
+
+    # A partir daqui, o conteúdo da textura TEX é renderizado para a textura temporária temp_texture
+    # Assim como as operações de zoom, scroll, leitura de pixels, etc. são aplicadas na textura temporária temp_text
+    _define_target(temp_texture, S.dim_window[0], S.dim_window[1])
+    _pico_set_color(PICO_COLOR_GRAY)
+    _clear_target_with_defined_color()
+    _copy_TEX_to_window()
+    _show_grid() # Desenha a grade na textura temporária, pois a grade não é desenhada na TEXT
+
+    # Lê pixels da textura temporária
+    screen_rect = sdl2.SDL_Rect(0, 0, S.dim_window[0], S.dim_window[1])  # Retângulo: x=0, y=0, largura=janela[0], altura=janela[1]
+    buf = (ctypes.c_uint8 * (PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w * screen_rect.h))() # Calcula o tamanho do buffer em bytes
+    # Lê do temp_texture a região definida em screen_rect e salva no buffer buf
+    sdl2.SDL_RenderReadPixels(REN, screen_rect, sdl2.SDL_PIXELFORMAT_RGBA32, buf, PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w)
+    # Destrói a textura temporária temp_texture, já que não é mais necessária
+    sdl2.SDL_DestroyTexture(temp_texture)
+    
+    # Cria uma surface(imagem em memória) a partir do buffer buf
+    surface = sdl2.SDL_CreateRGBSurfaceWithFormatFrom(buf, screen_rect.w, screen_rect.h, 32, PICO_BYTES_PER_PIXEL_RGBA32 * screen_rect.w, sdl2.SDL_PIXELFORMAT_RGBA32)
+    if not surface:
+        _restore_render_state(clip, current_target)
+        return None
+    
+    # Salva PNG
+    result = sdlimage.IMG_SavePNG(surface, path.encode('utf-8') if isinstance(path, str) else path)
+    sdl2.SDL_FreeSurface(surface) # Libera a surface da memória
+    _restore_render_state(clip, current_target) # Restaura o estado do renderer
+    
+    return path if result == 0 else None
+
+def pico_set_font(file, h):
+    """Define a fonte"""
+    if h == 0:
+        h = max(8, S.dim_world[1] // 10)
+    S.font_h = h
+    
+    if S.font_ttf is not None:
+        sdlttf.TTF_CloseFont(S.font_ttf)
+        S.font_ttf = None
+    
+    if file is None:
+        # Carregar fonte embutida
+        rw = sdl2.SDL_RWFromConstMem(pico_tiny_ttf, pico_tiny_ttf_len)
+        S.font_ttf = sdlttf.TTF_OpenFontRW(rw, 1, S.font_h)
+    else:
+        S.font_ttf = sdlttf.TTF_OpenFont(file.encode('utf-8'), S.font_h)
+    
+    pico_assert(S.font_ttf is not None)
+
+def pico_set_grid(on):
+    """Define se a grade deve ser exibida"""
+    S.grid = on
+    _pico_output_present(0)
+
+def pico_output_draw_pixel(pos):
+    """Desenha um pixel na posição especificada"""
+    if not REN:
+        return    
+    x = _X(pos[0], 1)
+    y = _Y(pos[1], 1)
+
+    sdl2.SDL_RenderDrawPoint(REN, x, y)
+    _pico_output_present(0)
+
+def pico_output_draw_pixels(apos):
+    """Desenha múltiplos pixels"""
+    if not REN:
+        return
+    for pos in apos:
+        x = _X(pos[0], 1)
+        y = _Y(pos[1], 1)
+        sdl2.SDL_RenderDrawPoint(REN, x, y)
+    _pico_output_present(0)
+#################################################################
