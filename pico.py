@@ -9,11 +9,14 @@ from constants import (
     PICO_TITLE,
     PICO_DIM_WINDOW,
     PICO_DIM_WORLD,
+    PICO_LEFT,
     PICO_CENTER,
+    PICO_TOP,
     PICO_MIDDLE,
     PICO_FILL,
     PICO_CLIP_RESET,
     PICO_BYTES_PER_PIXEL_RGBA32,
+    PICO_DIM_KEEP,
     PICO_COLOR_GRAY,
 )
 from tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
@@ -102,8 +105,12 @@ def _change_target_to_TEX():
 
 def _restore_render_state(clip, target):
     """Restaura o estado do renderer"""
-    zoom_dim = _zoom()
-    _define_target(target, zoom_dim[0], zoom_dim[1])
+    if target is None:
+        _change_target_to_window()
+    else:
+        # Se for uma textura, usamos o tamanho do zoom
+        zoom_dim = _zoom()
+        _define_target(target, zoom_dim[0], zoom_dim[1])
     _define_clip(clip)
 
 def _pico_set_color(color):
@@ -122,6 +129,95 @@ def _create_texture(w, h):
         sdl2.SDL_TEXTUREACCESS_TARGET,
         w, h
     )
+
+def _setup_aux_texture(w, h):
+    """
+    Cria uma textura auxiliar para desenho intermediário. Equivalente ao _draw_aux(w, h) no pico-sdl
+    """
+    aux = _create_texture(w, h)
+    sdl2.SDL_SetTextureBlendMode(aux, sdl2.SDL_BLENDMODE_BLEND)
+    sdl2.SDL_SetRenderTarget(REN, aux)
+    # Limpa com transparente
+    sdl2.SDL_SetRenderDrawColor(REN, 0, 0, 0, 0)
+    sdl2.SDL_RenderClear(REN)
+    # Restaura a cor de desenho para o aux
+    _restore_draw_color()
+    return aux
+
+def _pico_output_draw_tex(pos, tex, dim):
+    """Desenha uma textura com todas as transformações(crop, scale, rotation, etc)"""
+    import ctypes
+    
+    # Obtém as dimensões originais da textura
+    # tw e th armazenarão a largura e altura reais da textura carregada
+    tw, th = ctypes.c_int(), ctypes.c_int()
+    sdl2.SDL_QueryTexture(tex, None, None, tw, th)
+    tw, th = tw.value, th.value
+
+    # Recorte da imagem de origem
+    # S.crop define qual pedaço da textura original queremos desenhar (x, y, w, h)
+    cx, cy, cw, ch = S.crop
+    if cw == 0: cw = tw  # Se w=0, usa a largura total da textura
+    if ch == 0: ch = th  # Se h=0, usa a altura total da textura
+    # src_rect é o retângulo que "recorta" a imagem de origem
+    src_rect = sdl2.SDL_Rect(cx, cy, cw, ch)
+
+    # Tamanho final do desenho
+    # aqui que decidimos qual será o tamanho(rw, rh) do desenho no mundo
+    rw, rh = 0, 0
+    if dim == PICO_DIM_KEEP: # mantém o tamanho definido no recorte (crop)
+        rw, rh = cw, ch
+    elif dim[0] == 0: # se a largura for 0, calcula a largura proporcional baseada na altura desejada
+        rw = int(cw * (dim[1] / ch))
+        rh = dim[1]
+    elif dim[1] == 0: # se a altura for 0, calcula a altura proporcional baseada na largura desejada
+        rh = int(ch * (dim[0] / cw))
+        rw = dim[0]
+    else: # usa as dimensões exatas passadas no parâmetro 'dim'
+        rw, rh = dim
+
+    # aplica o fator de escala definido em S.scale
+    rw = (S.scale[0] * rw) // 100
+    rh = (S.scale[1] * rh) // 100
+
+    # Calcula a posição final(rx, ry) onde o objeto será desenhado
+    # _X e _Y já embutem o cálculo do Anchor e do Scroll
+    rx = _X(pos[0], rw)
+    ry = _Y(pos[1], rh)
+    # dst_rect é o retângulo de destino na tela(onde e em qual tamanho desenhar)
+    dst_rect = sdl2.SDL_Rect(int(rx), int(ry), int(rw), int(rh))
+
+    # Define o ponto exato(em relação ao objeto) sobre o qual ele irá girar.
+    # por padrão, se for (50, 50), ele girará em torno do seu próprio centro geométrico
+    rot_center = sdl2.SDL_Point(
+        int((S.anchor_rotate[0] * rw) // 100),
+        int((S.anchor_rotate[1] * rh) // 100)
+    )
+
+    # Espelhamento
+    # Configura se a imagem deve ser espelhada horizontalmente ou verticalmente
+    flip = sdl2.SDL_FLIP_NONE
+    angle_offset = 0
+    if S.flip[0] and S.flip[1]: # Flip em ambos os eixos é simulado rotacionando
+        # a imagem em 180 graus e aplicando um flip vertical
+        angle_offset = 180
+        flip = sdl2.SDL_FLIP_VERTICAL
+    elif S.flip[1]: # Apenas flip vertical
+        flip = sdl2.SDL_FLIP_VERTICAL
+    elif S.flip[0]: # Apenas flip horizontal
+        flip = sdl2.SDL_FLIP_HORIZONTAL
+
+    # Renderização final
+    # Copia a textura para o renderizador aplicando todas as transformações:
+    # ângulo atual + offset de flip, centro de rotação e modo de espelhamento.
+    sdl2.SDL_RenderCopyEx(
+        REN, tex,
+        src_rect, dst_rect,
+        float(S.angle + angle_offset),
+        rot_center,
+        flip
+    )
+    _pico_output_present(0)
 
 def _copy_TEX_to_window():
     """Copia a textura principal do mundo(TEX) para a janela(BackBuffer)"""
@@ -445,4 +541,41 @@ def pico_output_draw_pixels(apos):
         y = _Y(pos[1], 1)
         sdl2.SDL_RenderDrawPoint(REN, x, y)
     _pico_output_present(0)
+
+def pico_output_draw_line(p1, p2):
+    """
+    Desenha uma linha entre dois pontos(p1 e p2).
+    """
+    if not REN:
+        return
+
+    # salva estado atual para restauração posterior
+    clip = _get_current_clip()
+    target = _get_current_target()
+
+    # bounding box da linha
+    min_x = min(p1[0], p2[0])
+    max_x = max(p1[0], p2[0])
+    min_y = min(p1[1], p2[1])
+    max_y = max(p1[1], p2[1])
+    w = max_x - min_x + 1
+    h = max_y - min_y + 1
+    
+    # calcula a posição ancorada
+    pos = (_hanchor(min_x, 1), _vanchor(min_y, 1))
+
+    aux = _setup_aux_texture(w, h)
+    
+    # O desenho dentro da aux é relativo à 'pos' para compensar a anchor
+    sdl2.SDL_RenderDrawLine(REN, p1[0] - pos[0], p1[1] - pos[1], p2[0] - pos[0], p2[1] - pos[1])
+    
+    _restore_render_state(clip, target)
+
+    current_anchor = S.anchor_pos
+    S.anchor_pos = (PICO_LEFT, PICO_TOP) # reset da anchor para TOP-LEFT
+    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP) # também aplica a anchor e o scroll, por isso vale o reset da anchor
+    # para evitar confusão, resetamos a anchor original
+    
+    S.anchor_pos = current_anchor # restaura a anchor original
+    sdl2.SDL_DestroyTexture(aux) # destroi a textura auxiliar
 #################################################################
