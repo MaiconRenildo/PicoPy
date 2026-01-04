@@ -176,9 +176,9 @@ def _pico_output_present(force):
     _copy_TEX_to_window() # Seta o conteúdo no BackBuffer da janela
     _show_grid() # Desenha a grade POR CIMA(no BackBuffer da janela)
     _show_on_screen()
-    _restore_draw_color()
     
     # Restaura
+    _restore_draw_color()
     _change_target_to_TEX()
     _define_clip(clip)
 
