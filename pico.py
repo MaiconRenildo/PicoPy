@@ -609,6 +609,40 @@ def pico_output_draw_rect(rect):
     _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
     sdl2.SDL_DestroyTexture(aux)
 
+def pico_output_draw_tri(rect):
+    """
+    Desenha um triângulo com um ângulo reto no canto inferior esquerdo.
+    @param rect: (x, y, w, h) representando os limites do triângulo.
+    """
+    if not REN:
+        return
+
+    pos = (rect[0], rect[1])
+    clip = _get_current_clip()
+    target = _get_current_target()
+
+    aux = _setup_aux_texture(rect[2], rect[3]) # w, h
+    
+    # Coordenadas do triângulo relativas à textura auxiliar
+    # Canto superior esquerdo: (0, 0)
+    # Canto inferior esquerdo: (0, rect.h - 1)
+    # Canto inferior direito: (rect.w - 1, rect.h - 1)
+    x1, y1 = 0, 0
+    x2, y2 = 0, rect[3] - 1
+    x3, y3 = rect[2] - 1, rect[3] - 1
+
+    color = S.color_draw
+    r, g, b, a = color[0], color[1], color[2], color[3]
+
+    if S.style == PICO_FILL:
+        sdlgfx.filledTrigonRGBA(REN, x1, y1, x2, y2, x3, y3, r, g, b, a)
+    elif S.style == PICO_STROKE:
+        sdlgfx.trigonRGBA(REN, x1, y1, x2, y2, x3, y3, r, g, b, a)
+    
+    _restore_render_state(clip, target)
+    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
+    sdl2.SDL_DestroyTexture(aux)
+
 def pico_set_style(style):
     """
     Define o estilo de desenho(Preenchido ou Contorno).
