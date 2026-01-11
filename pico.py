@@ -643,6 +643,37 @@ def pico_output_draw_tri(rect):
     _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
     sdl2.SDL_DestroyTexture(aux)
 
+def pico_output_draw_oval(rect):
+    """
+    Desenha uma elipse/oval.
+    @param rect: (x, y, w, h) representando os limites da elipse.
+    """
+    if not REN:
+        return
+
+    pos = (rect[0], rect[1])
+    clip = _get_current_clip()
+    target = _get_current_target()
+
+    aux = _setup_aux_texture(rect[2], rect[3]) # w, h
+    
+    # Coordenadas do centro e raios para a elipse, relativas à textura auxiliar
+    center_x, center_y = rect[2] // 2, rect[3] // 2
+    radius_x, radius_y = rect[2] // 2, rect[3] // 2
+
+    color = S.color_draw
+    r, g, b, a = color[0], color[1], color[2], color[3]
+
+    if S.style == PICO_FILL:
+        sdlgfx.filledEllipseRGBA(REN, center_x, center_y, radius_x, radius_y, r, g, b, a)
+    elif S.style == PICO_STROKE:
+        sdlgfx.ellipseRGBA(REN, center_x, center_y, radius_x, radius_y, r, g, b, a)
+    
+    _restore_render_state(clip, target)
+    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
+    sdl2.SDL_DestroyTexture(aux)
+
+
 def pico_set_style(style):
     """
     Define o estilo de desenho(Preenchido ou Contorno).
