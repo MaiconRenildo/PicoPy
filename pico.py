@@ -4,6 +4,7 @@ import sdl2.sdlttf as sdlttf  # type: ignore
 import sdl2.sdlmixer as sdlmixer  # type: ignore
 import sdl2.sdlimage as sdlimage  # type: ignore
 from sdl2 import SDL_GetError # type: ignore
+import sdl2.sdlgfx as sdlgfx
 
 from constants import (
     PICO_TITLE,
@@ -14,6 +15,7 @@ from constants import (
     PICO_TOP,
     PICO_MIDDLE,
     PICO_FILL,
+    PICO_STROKE,
     PICO_CLIP_RESET,
     PICO_BYTES_PER_PIXEL_RGBA32,
     PICO_DIM_KEEP,
@@ -578,4 +580,39 @@ def pico_output_draw_line(p1, p2):
     
     S.anchor_pos = current_anchor # restaura a anchor original
     sdl2.SDL_DestroyTexture(aux) # destroi a textura auxiliar
+
+def pico_output_draw_rect(rect):
+    """
+    Desenha um retângulo.
+    @param rect: (x, y, w, h) representando o retângulo.
+    """
+    if not REN:
+        return
+
+    pos = (rect[0], rect[1])
+    clip = _get_current_clip()
+    target = _get_current_target() # Salva o target atual também
+
+    aux = _setup_aux_texture(rect[2], rect[3]) # w, h
+    
+    # Redefine rect para ser relativo à textura auxiliar (0, 0)
+    draw_rect = sdl2.SDL_Rect(0, 0, rect[2], rect[3])
+    
+    # A cor já é definida em _setup_aux_texture, então não precisamos setar aqui novamente.
+    # Apenas certifica que o estilo de desenho está correto no target auxiliar.
+    if S.style == PICO_FILL:
+        sdl2.SDL_RenderFillRect(REN, draw_rect)
+    elif S.style == PICO_STROKE:
+        sdl2.SDL_RenderDrawRect(REN, draw_rect)
+    
+    _restore_render_state(clip, target) # Restaura o target e o clip originais
+    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
+    sdl2.SDL_DestroyTexture(aux)
+
+def pico_set_style(style):
+    """
+    Define o estilo de desenho(Preenchido ou Contorno).
+    Ex: pico_set_style(PICO_STYLE.FILL)
+    """
+    S.style = style
 #################################################################
