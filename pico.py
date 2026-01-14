@@ -673,6 +673,62 @@ def pico_output_draw_oval(rect):
     _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
     sdl2.SDL_DestroyTexture(aux)
 
+def pico_output_draw_poly(apos, count):
+    """
+    Desenha um polígono.
+    @param apos: Lista de tuplas (x, y) representando os vértices do polígono.
+    @param count: Número de vértices.
+    """
+    if not REN or count == 0:
+        return
+    
+    # Calcular bounding box
+    xs = [p[0] for p in apos]
+    ys = [p[1] for p in apos]
+    min_x, maxx = min(xs), max(xs)
+    min_y, maxy = min(ys), max(ys)
+
+    # Ajustar coordenadas para serem relativas ao canto superior esquerdo da bounding box
+    ax = [p[0] - min_x for p in apos]
+    ay = [p[1] - min_y for p in apos]
+
+    # Convert to ctypes arrays for sdl2.gfx
+    import ctypes
+    ax_c = (ctypes.c_short * count)(*ax)
+    ay_c = (ctypes.c_short * count)(*ay)
+
+    # Calcular a posição (x,y) da textura auxiliar com anchor aplicado
+    pos = (_hanchor(min_x, 1), _vanchor(min_y, 1))
+
+    # Salvar estado atual do renderizador
+    clip = _get_current_clip()
+    target = _get_current_target()
+
+    # Criar textura auxiliar
+    aux_w = maxx - min_x + 1
+    aux_h = maxy - min_y + 1
+    aux = _setup_aux_texture(aux_w, aux_h)
+
+    # Desenhar polígono na textura auxiliar
+    color = S.color_draw
+    r, g, b, a = color[0], color[1], color[2], color[3]
+
+    if S.style == PICO_FILL:
+        sdlgfx.filledPolygonRGBA(REN, ax_c, ay_c, count, r, g, b, a)
+    elif S.style == PICO_STROKE:
+        sdlgfx.polygonRGBA(REN, ax_c, ay_c, count, r, g, b, a)
+    
+    # Restaurar estado original do renderizador
+    _restore_render_state(clip, target)
+
+    # Aplicar transformações e desenhar textura auxiliar na TEX principal
+    current_anchor = S.anchor_pos
+    S.anchor_pos = (PICO_LEFT, PICO_TOP) # Temporariamente para _pico_output_draw_tex
+    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
+    S.anchor_pos = current_anchor # Restaura anchor original
+    
+    # Destruir textura auxiliar
+    sdl2.SDL_DestroyTexture(aux)
 
 def pico_set_style(style):
     """
