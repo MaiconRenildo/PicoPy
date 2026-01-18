@@ -1,4 +1,5 @@
 import sys
+import ctypes
 import sdl2  # type: ignore
 import sdl2.sdlttf as sdlttf  # type: ignore
 import sdl2.sdlmixer as sdlmixer  # type: ignore
@@ -148,7 +149,6 @@ def _setup_aux_texture(w, h):
 
 def _pico_output_draw_tex(pos, tex, dim):
     """Desenha uma textura com todas as transformações(crop, scale, rotation, etc)"""
-    import ctypes
     
     # Obtém as dimensões originais da textura
     # tw e th armazenarão a largura e altura reais da textura carregada
@@ -429,7 +429,7 @@ def pico_set_zoom(pct):
         S.scroll[0] - (dx * S.anchor_pos[0] // 100),
         S.scroll[1] - (dy * S.anchor_pos[1] // 100)
     )
-    
+
     global TEX
     if TEX:
         sdl2.SDL_DestroyTexture(TEX)
@@ -452,7 +452,6 @@ def pico_output_screenshot(path=None):
 
 def pico_output_screenshot_ext(path, rect):
     """Tira um screenshot de uma região específica da tela"""
-    import ctypes
     from datetime import datetime
     
     if path is None:
@@ -673,6 +672,56 @@ def pico_output_draw_oval(rect):
     _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
     sdl2.SDL_DestroyTexture(aux)
 
+def pico_output_draw_buffer(pos, buffer, dim):
+    """
+    Desenha um buffer RGBA fornecido pelo usuário.
+    @param pos: (x, y) coordenada do canto superior esquerdo onde o buffer será desenhado.
+    @param buffer: Lista de tuplas RGBA (r, g, b, a) ou similar, representando os pixels.
+                   O buffer deve ser plano (linear), e não uma lista de listas.
+                   Ex: [(255,0,0,255), (0,255,0,255), ...]
+    @param dim: (w, h) dimensões do buffer.
+    """
+    if not REN:
+        return
+
+    # Garante que o buffer seja um bytearray para SDL_CreateRGBSurfaceWithFormatFrom
+    flat_buffer = bytearray()
+    for color in buffer:
+        flat_buffer.extend(color)
+
+    # Cria um array ctypes a partir do bytearray (compartilha o mesmo buffer de memória)
+    # Isso permite obter um ponteiro válido para passar ao SDL
+    buf_array = (ctypes.c_uint8 * len(flat_buffer)).from_buffer(flat_buffer)
+    pixels_ptr = ctypes.cast(buf_array, ctypes.c_void_p)
+
+    # Cria uma SDL_Surface a partir do buffer
+    surface = sdl2.SDL_CreateRGBSurfaceWithFormatFrom(
+        pixels_ptr,
+        dim[0], dim[1],  # w, h
+        32,              # depth
+        4 * dim[0],      # largura em bytes da linha
+        sdl2.SDL_PIXELFORMAT_RGBA32
+    )
+    if not surface:
+        print(f"Erro ao criar SDL_Surface: {sdl2.SDL_GetError().decode('utf-8')}")
+        return
+    # Cria uma SDL_Texture a partir da superfície
+    texture = sdl2.SDL_CreateTextureFromSurface(REN, surface)
+    if not texture:
+        print(f"Erro ao criar SDL_Texture: {sdl2.SDL_GetError().decode('utf-8')}")
+        sdl2.SDL_FreeSurface(surface)
+        return
+    sdl2.SDL_FreeSurface(surface)
+
+    # Ajusta o anchor para TOP-LEFT
+    current_anchor = S.anchor_pos
+    S.anchor_pos = (PICO_LEFT, PICO_TOP)
+    _pico_output_draw_tex(pos, texture, dim)
+    # Restaura o anchor original
+    S.anchor_pos = current_anchor
+    # Libera a textura
+    sdl2.SDL_DestroyTexture(texture)
+
 def pico_output_draw_poly(apos, count):
     """
     Desenha um polígono.
@@ -693,7 +742,6 @@ def pico_output_draw_poly(apos, count):
     ay = [p[1] - min_y for p in apos]
 
     # Convert to ctypes arrays for sdl2.gfx
-    import ctypes
     ax_c = (ctypes.c_short * count)(*ax)
     ay_c = (ctypes.c_short * count)(*ay)
 
