@@ -581,9 +581,10 @@ def pico_output_draw_line(p1, p2):
     sdl2.SDL_DestroyTexture(aux) # destroi a textura auxiliar
 
 def pico_output_draw_rect(rect):
-    """
-    Desenha um retângulo.
-    @param rect: (x, y, w, h) representando o retângulo.
+    """Desenha um retângulo.
+
+    Args:
+        rect: (x, y, w, h) representando o retângulo.
     """
     if not REN:
         return
@@ -609,9 +610,10 @@ def pico_output_draw_rect(rect):
     sdl2.SDL_DestroyTexture(aux)
 
 def pico_output_draw_tri(rect):
-    """
-    Desenha um triângulo com um ângulo reto no canto inferior esquerdo.
-    @param rect: (x, y, w, h) representando os limites do triângulo.
+    """Desenha um triângulo com um ângulo reto no canto inferior esquerdo.
+
+    Args:
+        rect: (x, y, w, h) representando os limites do triângulo.
     """
     if not REN:
         return
@@ -643,9 +645,10 @@ def pico_output_draw_tri(rect):
     sdl2.SDL_DestroyTexture(aux)
 
 def pico_output_draw_oval(rect):
-    """
-    Desenha uma elipse/oval.
-    @param rect: (x, y, w, h) representando os limites da elipse.
+    """Desenha uma elipse/oval.
+
+    Args:
+        rect: (x, y, w, h) representando os limites da elipse.
     """
     if not REN:
         return
@@ -673,13 +676,14 @@ def pico_output_draw_oval(rect):
     sdl2.SDL_DestroyTexture(aux)
 
 def pico_output_draw_buffer(pos, buffer, dim):
-    """
-    Desenha um buffer RGBA fornecido pelo usuário.
-    @param pos: (x, y) coordenada do canto superior esquerdo onde o buffer será desenhado.
-    @param buffer: Lista de tuplas RGBA (r, g, b, a) ou similar, representando os pixels.
-                   O buffer deve ser plano (linear), e não uma lista de listas.
-                   Ex: [(255,0,0,255), (0,255,0,255), ...]
-    @param dim: (w, h) dimensões do buffer.
+    """Desenha um buffer RGBA fornecido pelo usuário.
+
+    Args:
+        pos: (x, y) coordenada do canto superior esquerdo onde o buffer será desenhado.
+        buffer: Lista de tuplas RGBA (r, g, b, a) ou similar, representando os pixels.
+                O buffer deve ser plano (linear), e não uma lista de listas.
+                Ex: [(255,0,0,255), (0,255,0,255), ...]
+        dim: (w, h) dimensões do buffer.
     """
     if not REN:
         return
@@ -723,10 +727,11 @@ def pico_output_draw_buffer(pos, buffer, dim):
     sdl2.SDL_DestroyTexture(texture)
 
 def pico_output_draw_poly(apos, count):
-    """
-    Desenha um polígono.
-    @param apos: Lista de tuplas (x, y) representando os vértices do polígono.
-    @param count: Número de vértices.
+    """Desenha um polígono.
+
+    Args:
+        apos: Lista de tuplas (x, y) representando os vértices do polígono.
+        count: Número de vértices.
     """
     if not REN or count == 0:
         return
