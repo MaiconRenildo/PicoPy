@@ -280,6 +280,176 @@ def _pico_output_present(force):
     _change_target_to_TEX()
     _define_clip(clip)
 
+def _calculate_primitive_dimensions(points):
+    """
+    Calcula as dimensões (largura, altura) e a posição ancorada (pos)
+    para um conjunto de pontos que definem uma primitiva.
+
+    Args:
+        points: Uma lista de tuplas (x, y) representando os pontos da primitiva.
+
+    Returns:
+        Um dicionário contendo:
+        'pos': A posição (x, y) ancorada da bounding box.
+        'width': A largura da bounding box.
+        'height': A altura da bounding box.
+        'min_x': A coordenada X mínima da bounding box.
+        'min_y': A coordenada Y mínima da bounding box.
+        'max_x': A coordenada X máxima da bounding box.
+        'max_y': A coordenada Y máxima da bounding box.
+    """
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    width = max_x - min_x + 1
+    height = max_y - min_y + 1
+    # Calcula a posição ancorada (canto superior esquerdo) da bounding box
+    pos = (_hanchor(min_x, 1), _vanchor(min_y, 1))
+    return {
+        'pos': pos,
+        'width': width,
+        'height': height,
+        'min_x': min_x,
+        'min_y': min_y,
+        'max_x': max_x,
+        'max_y': max_y
+    }
+
+def __start_primitive_render_context(rect: tuple) -> tuple:
+    """
+    Prepara o contexto para desenhar uma primitiva.
+
+    Salva o estado atual do renderizador (clip e target) e cria uma textura auxiliar
+    com as dimensões fornecidas.
+
+    Args:
+        rect: Uma tupla (x, y, w, h) que define a posição e as dimensões da primitiva.
+
+    Returns:
+        Uma tupla (pos, clip, target, aux) contendo:
+        - pos: A posição (x, y) da primitiva, ajustada pelo anchor.
+        - clip: O SDL_Rect de clipping atual do renderizador.
+        - target: O SDL_Texture target atual do renderizador.
+        - aux: A textura auxiliar SDL_Texture recém-criada.
+    """
+    pos = (_hanchor(rect[0], rect[2]), _vanchor(rect[1], rect[3]))
+    clip = _get_current_clip()
+    target = _get_current_target()
+    aux = _setup_aux_texture(rect[2], rect[3]) # w, h
+    return pos, clip, target, aux
+
+def __finish_primitive_render_context(clip, target, pos, aux):
+    """
+    Finaliza a renderização de uma primitiva.
+
+    Restaura o estado do renderizador(clip e target), desenha o conteúdo da textura
+    auxiliar na textura principal(TEX) e destrói a textura auxiliar.
+
+    Args:
+        clip: O SDL_Rect de clipping original a ser restaurado.
+        target: O SDL_Texture target original a ser restaurado.
+        pos: A posição (x, y) da primitiva, ajustada pelo anchor.
+        aux: A textura auxiliar SDL_Texture a ser desenhada e destruída.
+    """
+    _restore_render_state(clip, target)
+    # Salva e redefine o anchor para garantir que _pico_output_draw_tex posicione corretamente
+    current_anchor = S.anchor_pos
+    S.anchor_pos = (PICO_LEFT, PICO_TOP) # Temporariamente para _pico_output_draw_tex
+    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
+    S.anchor_pos = current_anchor # Restaura o anchor original
+    sdl2.SDL_DestroyTexture(aux)
+
+def _execute_primitive_render(rect: tuple, draw_function, init_function=None, finish_function=None):
+    """
+    Orquestra o processo de renderização de uma primitiva gráfica.
+
+    Esta função gerencia o ciclo de vida completo do desenho de uma primitiva,
+    incluindo a configuração do contexto, a execução do desenho específico e a
+    finalização, com tratamento adequado do estado do renderizador e das texturas.
+
+    Args:
+        rect: Uma tupla (x, y, w, h) que define a posição e as dimensões da primitiva.
+        draw_function: Uma função de callback que realiza o desenho específico
+                       da primitiva na textura auxiliar. Ela deve receber um `rect`
+                       com as dimensões da textura auxiliar.
+        init_function: (Opcional) Função para inicializar o contexto de desenho.
+                       Usa _start_primitive_render_context por padrão.
+        finish_function: (Opcional) Função para finalizar o contexto de desenho.
+                         Usa _finish_primitive_render_context por padrão.
+    """
+    if not REN:
+        return
+    init_function = init_function or __start_primitive_render_context
+    finish_function = finish_function or __finish_primitive_render_context
+    pos, clip, target, aux = init_function(rect)
+    draw_function(rect)
+    finish_function(clip, target, pos, aux)
+
+def _start_point_primitive_render_context(points: list[tuple]) -> tuple:
+    """
+    Prepara o contexto para desenhar uma primitiva baseada em pontos.
+
+    Calcula as dimensões da bounding box, salva o estado atual do renderizador
+    e cria uma textura auxiliar com as dimensões calculadas.
+
+    Args:
+        points: Uma lista de tuplas (x, y) representando os pontos da primitiva.
+
+    Returns:
+        Uma tupla (clip, target, primitive_dimensions, aux) contendo:
+        - clip: O SDL_Rect de clipping atual do renderizador.
+        - target: O SDL_Texture target atual do renderizador.
+        - primitive_dimensions: Um dicionário com as dimensões e posição da primitiva.
+        - aux: A textura auxiliar SDL_Texture recém-criada.
+    """
+    clip = _get_current_clip()
+    target = _get_current_target()
+    primitive_dimensions = _calculate_primitive_dimensions(points)
+    aux = _setup_aux_texture(primitive_dimensions['width'], primitive_dimensions['height'])
+    return clip, target, primitive_dimensions, aux
+
+def _finish_point_primitive_render_context(clip, target, primitive_dimensions, aux):
+    """
+    Finaliza a renderização de uma primitiva baseada em pontos.
+
+    Restaura o estado do renderizador, desenha o conteúdo da textura
+    auxiliar na textura principal (TEX) e destrói a textura auxiliar.
+
+    Args:
+        clip: O SDL_Rect de clipping original a ser restaurado.
+        target: O SDL_Texture target original a ser restaurado.
+        primitive_dimensions: Um dicionário com as dimensões e posição da primitiva.
+        aux: A textura auxiliar SDL_Texture a ser desenhada e destruída.
+    """
+    _restore_render_state(clip, target)
+    # Aplicar transformações e desenhar textura auxiliar na TEX principal
+    current_anchor = S.anchor_pos
+    S.anchor_pos = (PICO_LEFT, PICO_TOP) # Temporariamente para _pico_output_draw_tex
+    _pico_output_draw_tex(primitive_dimensions['pos'], aux, PICO_DIM_KEEP)
+    S.anchor_pos = current_anchor # Restaura anchor original
+    sdl2.SDL_DestroyTexture(aux)
+
+def _execute_point_primitive_render(points: list[tuple], draw_function, count=None):
+    """
+    Orquestra o processo de renderização de uma primitiva gráfica baseada em pontos.
+
+    Esta função gerencia o ciclo de vida completo do desenho de uma primitiva,
+    incluindo a configuração do contexto, a execução do desenho específico e a
+    finalização, com tratamento adequado do estado do renderizador e das texturas.
+
+    Args:
+        points: Uma lista de tuplas (x, y) representando os pontos da primitiva.
+        draw_function: Uma função de callback que realiza o desenho específico da primitiva
+                       na textura auxiliar. Ela deve receber `primitive_dimensions` e `count` (se aplicável).
+        count: (Opcional) O número de vértices, necessário para polígonos ctypes.
+    """
+    if not REN or not points or (count is not None and count == 0):
+        return
+    clip, target, primitive_dimensions, aux = _start_point_primitive_render_context(points)
+    draw_function(primitive_dimensions, count)
+    _finish_point_primitive_render_context(clip, target, primitive_dimensions, aux)
+
 # Funções auxiliares para cálculo de posição
 def _hanchor(x, w):
     """Calcula posição horizontal com anchor aplicado"""
@@ -534,11 +704,11 @@ def pico_output_draw_pixel(pos):
     sdl2.SDL_RenderDrawPoint(REN, x, y)
     _pico_output_present(0)
 
-def pico_output_draw_pixels(apos):
+def pico_output_draw_pixels(vertices):
     """Desenha múltiplos pixels"""
     if not REN:
         return
-    for pos in apos:
+    for pos in vertices:
         x = _X(pos[0], 1)
         y = _Y(pos[1], 1)
         sdl2.SDL_RenderDrawPoint(REN, x, y)
@@ -548,187 +718,118 @@ def pico_output_draw_line(p1, p2):
     """
     Desenha uma linha entre dois pontos(p1 e p2).
     """
-    if not REN:
-        return
+    def _draw_line_function(primitive_dimensions, _): # O '_' é para o parâmetro count não utilizado
+        # As coordenadas são ajustadas para serem relativas à textura auxiliar (0,0)
+        x1, y1 = int(p1[0] - primitive_dimensions['min_x']), int(p1[1] - primitive_dimensions['min_y'])
+        x2, y2 = int(p2[0] - primitive_dimensions['min_x']), int(p2[1] - primitive_dimensions['min_y'])
+        sdl2.SDL_RenderDrawLine(REN, x1, y1, x2, y2)
+    _execute_point_primitive_render([p1, p2], _draw_line_function)
 
-    # salva estado atual para restauração posterior
-    clip = _get_current_clip()
-    target = _get_current_target()
 
-    # bounding box da linha
-    min_x = min(p1[0], p2[0])
-    max_x = max(p1[0], p2[0])
-    min_y = min(p1[1], p2[1])
-    max_y = max(p1[1], p2[1])
-    w = max_x - min_x + 1
-    h = max_y - min_y + 1
-    
-    # calcula a posição ancorada
-    pos = (_hanchor(min_x, 1), _vanchor(min_y, 1))
-
-    aux = _setup_aux_texture(w, h)
-    
-    # O desenho dentro da aux é relativo à 'pos' para compensar a anchor
-    sdl2.SDL_RenderDrawLine(REN, p1[0] - pos[0], p1[1] - pos[1], p2[0] - pos[0], p2[1] - pos[1])
-    
-    _restore_render_state(clip, target)
-
-    current_anchor = S.anchor_pos
-    S.anchor_pos = (PICO_LEFT, PICO_TOP) # reset da anchor para TOP-LEFT
-    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP) # também aplica a anchor e o scroll, por isso vale o reset da anchor
-    # para evitar confusão, resetamos a anchor original
-    
-    S.anchor_pos = current_anchor # restaura a anchor original
-    sdl2.SDL_DestroyTexture(aux) # destroi a textura auxiliar
 
 def pico_output_draw_rect(rect):
     """
     Desenha um retângulo.
-    @param rect: (x, y, w, h) representando o retângulo.
+
+    Args:
+        rect: Uma tupla (x, y, w, h) representando o retângulo.
     """
-    if not REN:
-        return
-
-    pos = (rect[0], rect[1])
-    clip = _get_current_clip()
-    target = _get_current_target() # Salva o target atual também
-
-    aux = _setup_aux_texture(rect[2], rect[3]) # w, h
-    
-    # Redefine rect para ser relativo à textura auxiliar (0, 0)
-    draw_rect = sdl2.SDL_Rect(0, 0, rect[2], rect[3])
-    
-    # A cor já é definida em _setup_aux_texture, então não precisamos setar aqui novamente.
-    # Apenas certifica que o estilo de desenho está correto no target auxiliar.
-    if S.style == PICO_FILL:
-        sdl2.SDL_RenderFillRect(REN, draw_rect)
-    elif S.style == PICO_STROKE:
-        sdl2.SDL_RenderDrawRect(REN, draw_rect)
-    
-    _restore_render_state(clip, target) # Restaura o target e o clip originais
-    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
-    sdl2.SDL_DestroyTexture(aux)
+    def _draw_function(rect: tuple):
+        # Redefine rect para ser relativo à textura auxiliar (0, 0)
+        draw_rect = sdl2.SDL_Rect(0, 0, rect[2], rect[3])
+        
+        # A cor já é definida em _setup_aux_texture, então não precisamos setar aqui novamente.
+        # Apenas certifica que o estilo de desenho está correto no target auxiliar.
+        if S.style == PICO_FILL:
+            sdl2.SDL_RenderFillRect(REN, draw_rect)
+        elif S.style == PICO_STROKE:
+            sdl2.SDL_RenderDrawRect(REN, draw_rect)
+    _execute_primitive_render(
+        rect=rect,
+        draw_function=_draw_function,
+    )
 
 def pico_output_draw_tri(rect):
     """
     Desenha um triângulo com um ângulo reto no canto inferior esquerdo.
-    @param rect: (x, y, w, h) representando os limites do triângulo.
+    
+    Args:
+        rect: Uma tupla (x, y, w, h) representando os limites do triângulo.
     """
-    if not REN:
-        return
+    def _draw_function(rect: tuple):
+        # draw
+        # Coordenadas do triângulo relativas à textura auxiliar
+        # Canto superior esquerdo: (0, 0)
+        # Canto inferior esquerdo: (0, rect.h - 1)
+        # Canto inferior direito: (rect.w - 1, rect.h - 1)
+        x1, y1 = 0, 0
+        x2, y2 = 0, rect[3] - 1
+        x3, y3 = rect[2] - 1, rect[3] - 1
 
-    pos = (rect[0], rect[1])
-    clip = _get_current_clip()
-    target = _get_current_target()
+        color = S.color_draw
+        r, g, b, a = color[0], color[1], color[2], color[3]
 
-    aux = _setup_aux_texture(rect[2], rect[3]) # w, h
-    
-    # Coordenadas do triângulo relativas à textura auxiliar
-    # Canto superior esquerdo: (0, 0)
-    # Canto inferior esquerdo: (0, rect.h - 1)
-    # Canto inferior direito: (rect.w - 1, rect.h - 1)
-    x1, y1 = 0, 0
-    x2, y2 = 0, rect[3] - 1
-    x3, y3 = rect[2] - 1, rect[3] - 1
-
-    color = S.color_draw
-    r, g, b, a = color[0], color[1], color[2], color[3]
-
-    if S.style == PICO_FILL:
-        sdlgfx.filledTrigonRGBA(REN, x1, y1, x2, y2, x3, y3, r, g, b, a)
-    elif S.style == PICO_STROKE:
-        sdlgfx.trigonRGBA(REN, x1, y1, x2, y2, x3, y3, r, g, b, a)
-    
-    _restore_render_state(clip, target)
-    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
-    sdl2.SDL_DestroyTexture(aux)
+        if S.style == PICO_FILL:
+            sdlgfx.filledTrigonRGBA(REN, x1, y1, x2, y2, x3, y3, r, g, b, a)
+        elif S.style == PICO_STROKE:
+            sdlgfx.trigonRGBA(REN, x1, y1, x2, y2, x3, y3, r, g, b, a)
+    _execute_primitive_render(
+        rect=rect,
+        draw_function=_draw_function,
+    )
 
 def pico_output_draw_oval(rect):
     """
     Desenha uma elipse/oval.
-    @param rect: (x, y, w, h) representando os limites da elipse.
+    
+    Args:
+        rect: Uma tupla (x, y, w, h) representando os limites da elipse.
     """
-    if not REN:
-        return
+    def _draw_function(rect: tuple):
+        # Coordenadas do centro e raios para a elipse, relativas à textura auxiliar
+        center_x, center_y = rect[2] // 2, rect[3] // 2
+        radius_x, radius_y = rect[2] // 2, rect[3] // 2
 
-    pos = (rect[0], rect[1])
-    clip = _get_current_clip()
-    target = _get_current_target()
+        color = S.color_draw
+        r, g, b, a = color[0], color[1], color[2], color[3]
 
-    aux = _setup_aux_texture(rect[2], rect[3]) # w, h
-    
-    # Coordenadas do centro e raios para a elipse, relativas à textura auxiliar
-    center_x, center_y = rect[2] // 2, rect[3] // 2
-    radius_x, radius_y = rect[2] // 2, rect[3] // 2
+        if S.style == PICO_FILL:
+            sdlgfx.filledEllipseRGBA(REN, center_x, center_y, radius_x, radius_y, r, g, b, a)
+        elif S.style == PICO_STROKE:
+            sdlgfx.ellipseRGBA(REN, center_x, center_y, radius_x, radius_y, r, g, b, a)
+    _execute_primitive_render(
+        rect=rect,
+        draw_function=_draw_function,
+    )
 
-    color = S.color_draw
-    r, g, b, a = color[0], color[1], color[2], color[3]
 
-    if S.style == PICO_FILL:
-        sdlgfx.filledEllipseRGBA(REN, center_x, center_y, radius_x, radius_y, r, g, b, a)
-    elif S.style == PICO_STROKE:
-        sdlgfx.ellipseRGBA(REN, center_x, center_y, radius_x, radius_y, r, g, b, a)
-    
-    _restore_render_state(clip, target)
-    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
-    sdl2.SDL_DestroyTexture(aux)
-
-def pico_output_draw_poly(apos, count):
+def pico_output_draw_poly(vertices, count):
     """
     Desenha um polígono.
-    @param apos: Lista de tuplas (x, y) representando os vértices do polígono.
-    @param count: Número de vértices.
+
+    Args:
+        vertices: Uma lista de tuplas (x, y) representando os vértices do polígono.
+        count: O número de vértices no polígono.
     """
-    if not REN or count == 0:
-        return
-    
-    # Calcular bounding box
-    xs = [p[0] for p in apos]
-    ys = [p[1] for p in apos]
-    min_x, maxx = min(xs), max(xs)
-    min_y, maxy = min(ys), max(ys)
+    import ctypes # Este import precisa permanecer aqui se for usado apenas nesta função
 
-    # Ajustar coordenadas para serem relativas ao canto superior esquerdo da bounding box
-    ax = [p[0] - min_x for p in apos]
-    ay = [p[1] - min_y for p in apos]
+    def _draw_poly_function(primitive_dimensions, actual_count):
+        color = S.color_draw
+        r, g, b, a = color[0], color[1], color[2], color[3]
 
-    # Convert to ctypes arrays for sdl2.gfx
-    import ctypes
-    ax_c = (ctypes.c_short * count)(*ax)
-    ay_c = (ctypes.c_short * count)(*ay)
+        # Ajustar coordenadas para serem relativas ao canto superior esquerdo da bounding box
+        ax = [p[0] - primitive_dimensions["min_x"] for p in vertices]
+        ay = [p[1] - primitive_dimensions["min_y"] for p in vertices]
 
-    # Calcular a posição (x,y) da textura auxiliar com anchor aplicado
-    pos = (_hanchor(min_x, 1), _vanchor(min_y, 1))
+        # Converter para arrays ctypes para sdl2.gfx
+        ax_c = (ctypes.c_short * actual_count)(*ax)
+        ay_c = (ctypes.c_short * actual_count)(*ay)
 
-    # Salvar estado atual do renderizador
-    clip = _get_current_clip()
-    target = _get_current_target()
-
-    # Criar textura auxiliar
-    aux_w = maxx - min_x + 1
-    aux_h = maxy - min_y + 1
-    aux = _setup_aux_texture(aux_w, aux_h)
-
-    # Desenhar polígono na textura auxiliar
-    color = S.color_draw
-    r, g, b, a = color[0], color[1], color[2], color[3]
-
-    if S.style == PICO_FILL:
-        sdlgfx.filledPolygonRGBA(REN, ax_c, ay_c, count, r, g, b, a)
-    elif S.style == PICO_STROKE:
-        sdlgfx.polygonRGBA(REN, ax_c, ay_c, count, r, g, b, a)
-    
-    # Restaurar estado original do renderizador
-    _restore_render_state(clip, target)
-
-    # Aplicar transformações e desenhar textura auxiliar na TEX principal
-    current_anchor = S.anchor_pos
-    S.anchor_pos = (PICO_LEFT, PICO_TOP) # Temporariamente para _pico_output_draw_tex
-    _pico_output_draw_tex(pos, aux, PICO_DIM_KEEP)
-    S.anchor_pos = current_anchor # Restaura anchor original
-    
-    # Destruir textura auxiliar
-    sdl2.SDL_DestroyTexture(aux)
+        if S.style == PICO_FILL:
+            sdlgfx.filledPolygonRGBA(REN, ax_c, ay_c, actual_count, r, g, b, a)
+        elif S.style == PICO_STROKE:
+            sdlgfx.polygonRGBA(REN, ax_c, ay_c, actual_count, r, g, b, a)
+    _execute_point_primitive_render(vertices, _draw_poly_function, count)
 
 def pico_set_style(style):
     """
