@@ -444,6 +444,37 @@ def pico_set_zoom(pct):
     clip = sdl2.SDL_Rect(0, 0, new[0], new[1])
     _define_clip(clip)
 
+def pico_get_dim_window():
+    """Obtém as dimensões da janela."""
+    return S.dim_window
+
+def pico_set_dim_window(dim):
+    """Define as dimensões da janela.
+
+    Args:
+        dim: (w, h) As novas dimensões da janela.
+    """
+    if S.fullscreen:
+        return
+    S.dim_window = dim
+    sdl2.SDL_SetWindowSize(WIN, dim[0], dim[1])
+    zoom_dim = _zoom()
+    clip = sdl2.SDL_Rect(0, 0, zoom_dim[0], zoom_dim[1])
+    _define_clip(clip)
+
+def pico_get_dim_world():
+    """Obtém as dimensões do mundo lógico."""
+    return S.dim_world
+
+def pico_set_dim_world(dim):
+    """Define as dimensões do mundo lógico.
+
+    Args:
+        dim: (w, h) As novas dimensões do mundo lógico.
+    """
+    S.dim_world = dim
+    pico_set_zoom(S.zoom)
+
 def pico_output_screenshot(path=None):
     """Tira um screenshot da tela"""
     zoom_dim = _zoom()
