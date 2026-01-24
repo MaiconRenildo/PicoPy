@@ -1,28 +1,20 @@
-
 from constants import PICO_FILL, PICO_STROKE
-from pico import PicoPy
+from tests.base_test import PicoTestBase
 
-def test_draw_rect_fill():
-    """Testa o desenho de um retângulo preenchido"""
-    Pico = PicoPy()
-    Pico.pico_init(1)
-    try:
-        Pico.pico_output_clear()
-        Pico.pico_set_style(PICO_FILL)
-        Pico.pico_output_draw_rect((27, 17, 40, 20)) # x, y, w, h
-        Pico.screenshot_and_compare("draw_rect_fill.png")
-    finally:
-        Pico.pico_init(0)
 
-def test_draw_rect_stroke():
-    """Testa o desenho de um retângulo contornado"""
-    Pico = PicoPy()
-    Pico.pico_init(1)
-    try:
-        Pico.pico_output_clear()
-        Pico.pico_set_style(PICO_STROKE)
-        Pico.pico_output_draw_rect((27, 17, 40, 20)) # x, y, w, h
-        Pico.screenshot_and_compare("draw_rect_stroke.png")
-    finally:
-        Pico.pico_init(0)
+class TestDrawRect(PicoTestBase):
+    """Classe de teste para operações de desenho de retângulos."""
+    
+    def test_draw_rect_fill(self):
+        """Testa o desenho de um retângulo preenchido"""
+        self.utils.pico.pico_output_clear()
+        self.utils.pico.pico_set_style(PICO_FILL)
+        self.utils.pico.pico_output_draw_rect((27, 17, 40, 20)) # x, y, w, h
+        self.utils.screenshot_and_compare("draw_rect_fill.png")
 
+    def test_draw_rect_stroke(self):
+        """Testa o desenho de um retângulo contornado"""
+        self.utils.pico.pico_output_clear()
+        self.utils.pico.pico_set_style(PICO_STROKE)
+        self.utils.pico.pico_output_draw_rect((27, 17, 40, 20)) # x, y, w, h
+        self.utils.screenshot_and_compare("draw_rect_stroke.png")

@@ -18,11 +18,10 @@ from constants import (
     PICO_DIM_KEEP,
     PICO_COLOR_GRAY,
 )
-from tests.utils import PicoTest
 from tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 
 
-class PicoPy(PicoTest):
+class PicoPy:
     def __init__(self):
         self.S = PicoState()
         self.WIN = None  # Janela(objeto da janela do sistema operacional)
