@@ -59,13 +59,14 @@ class TestDrawImage(PicoTestBase):
         y_dim = 493*2
         self.utils.pico.pico_set_dim_window((x_dim, y_dim))
         self.utils.pico.pico_set_dim_world((x_dim, y_dim))
-        self.utils.pico.pico_output_clear()
+        # self.utils.pico.pico_output_clear()
         
         window_width, window_height = self.utils.pico.pico_get_dim_window()
         center_x = window_width / 2
         center_y = window_height/ 2
         # Desenho com zoom de 200%
         self.utils.pico.pico_set_zoom((200, 200))
+        self.utils.pico.pico_output_clear() # limpa a nova textura com o preto
         self.utils.pico.pico_output_draw_image((center_x, center_y), SKY_IMAGE_PATH)
         self.utils.pico.pico_output_present()
         self.utils.screenshot_and_compare("simple_image_center_x_zoom_200.png")
@@ -83,6 +84,8 @@ class TestDrawImage(PicoTestBase):
         self.utils.pico.pico_set_dim_window((x_dim, y_dim))
         self.utils.pico.pico_set_dim_world((x_dim, y_dim))
         self.utils.pico.pico_output_clear() # limpa a textura original com o preto
+        # pico_output_clear() # removido, pois ao limpar o fundo da textura original ficaria preto.
+        # no entanto, ao chamar a pico_set_zoom, uma nova textura é criada sem o fundo preto da textura original.
         
         window_width, window_height = self.utils.pico.pico_get_dim_window()
         center_x = window_width / 2
