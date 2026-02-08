@@ -178,6 +178,7 @@ class PicoPy:
         elif self.S.flip[0]: # Apenas flip horizontal
             flip = sdl2.SDL_FLIP_HORIZONTAL
 
+        
         # Renderização final
         # Copia a textura para o renderizador aplicando todas as transformações:
         # ângulo atual + offset de flip, centro de rotação e modo de espelhamento.
@@ -442,6 +443,28 @@ class PicoPy:
         """
         self.S.dim_world = dim
         self.pico_set_zoom(self.S.zoom)
+
+    def pico_set_anchor_pos(self, anchor):
+        """Define a posição de ancoragem para as operações de desenho.
+
+        Args:
+            anchor: (x, y) percentagens (0-100) que definem o ponto de ancoragem.
+                    Ex: (0, 0) para canto superior esquerdo, (50, 50) para o centro.
+        """
+        self.S.anchor_pos = anchor
+
+    def pico_pos(self, pct):
+        """Calcula uma posição no mundo lógico com base em percentagens.
+
+        Args:
+            pct: (x, y) percentagens (0-100) da largura e altura do mundo.
+        Returns:
+            (x, y) coordenadas no mundo lógico.
+        """
+        return (
+            (self.S.dim_world[0] * pct[0]) // 100,
+            (self.S.dim_world[1] * pct[1]) // 100
+        )
 
     def pico_output_screenshot(self, path=None):
         """Tira um screenshot da tela"""
@@ -813,4 +836,23 @@ class PicoPy:
         Ex: pico_set_style(PICO_STYLE.FILL)
         """
         self.S.style = style
+
+    def pico_set_scroll(self, pos):
+        """Define o deslocamento da câmera (scroll).
+
+        Args:
+            pos: (x, y) As novas coordenadas de deslocamento.
+        """
+        self.S.scroll = pos
+
+    def pico_get_scroll(self):
+        """Obtém o deslocamento atual da câmera (scroll)."""
+        return self.S.scroll
+
+    def pico_set_color(self, color):
+        """
+        Define a cor de desenho para futuras operações.
+        """
+        self.S.color_draw = color
+        self._pico_set_color(color)
     #################################################################
