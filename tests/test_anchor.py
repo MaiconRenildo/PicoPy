@@ -238,3 +238,71 @@ class TestAnchor(PicoTestBase):
 
         self.utils.pico.pico_output_present()
         self.utils.screenshot_and_compare("combined_extreme_anchors.png")
+   
+    def test_anchor_with_different_object_sizes(self):
+        """
+        Testa a ancoragem com um pixel, um retângulo pequeno e um retângulo maior
+        na mesma posição e com a mesma âncora (PICO_CENTER, PICO_MIDDLE).
+        Todos os centros devem se alinhar no ponto central.
+        """
+        central_pt = self.utils.pico.pico_pos((50, 50))
+        
+        self.utils.pico.pico_output_clear()
+        self.utils.pico.pico_set_anchor_pos((PICO_CENTER, PICO_MIDDLE))
+
+        # Desenha um retângulo maior (20x20) - será azul
+        self.utils.pico.pico_set_color((0, 0, 255, 255)) # Azul
+        self.utils.pico.pico_output_draw_rect((central_pt[0], central_pt[1], 20, 20))
+
+        # Desenha um retângulo pequeno (4x4) - será vermelho
+        self.utils.pico.pico_set_color((255, 0, 0, 255)) # Vermelho
+        self.utils.pico.pico_output_draw_rect((central_pt[0], central_pt[1], 4, 4))
+
+        # Desenha um pixel (1x1) - será branco
+        self.utils.pico.pico_set_color((255, 255, 255, 255)) # Branco
+        self.utils.pico.pico_output_draw_pixel(central_pt)
+
+        self.utils.pico.pico_output_present()
+        self.utils.screenshot_and_compare("anchor_different_object_sizes.png")
+
+
+
+
+    def test_anchor_with_camera_scroll(self):
+        """
+        Testa a ancoragem com um deslocamento da câmera (scroll).
+        Desenha múltiplos retângulos com âncoras diferentes ao redor
+        de um ponto central, com um scroll aplicado.
+        """
+        rect_w, rect_h = 10, 10
+        central_pt = self.utils.pico.pico_pos((50, 50)) # Ponto de referência no mundo (400, 300)
+        # Novo scroll_offset para mostrar apenas o quadrado azul em diante
+        # (32 - 10, 18 - 10) = (22, 8) no mundo lógico.
+        # O ponto (22, 8) aparece na tela em (0, 0).
+        scroll_offset = (22, 8) # Deslocamento da câmera
+
+        self.utils.pico.pico_output_clear()
+        self.utils.pico.pico_set_scroll(scroll_offset) # Aplica o scroll
+
+        # Retângulo 1: Âncora central (referência) - será branco
+        # Seu centro lógico estará em central_pt, mas visualmente deslocado pelo scroll.
+        self.utils.pico.pico_set_color((255, 255, 255, 255)) # Branco
+        self.utils.pico.pico_set_anchor_pos((PICO_CENTER, PICO_MIDDLE))
+        self.utils.pico.pico_output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
+
+        # Retângulo 2: Âncora superior esquerda - será vermelho
+        # Seu canto superior esquerdo lógico estará em central_pt, deslocado pelo scroll.
+        self.utils.pico.pico_set_color((255, 0, 0, 255)) # Vermelho
+        self.utils.pico.pico_set_anchor_pos((PICO_LEFT, PICO_TOP))
+        self.utils.pico.pico_output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
+        # Retângulo 3: Âncora inferior direita - será azul
+        # Seu canto inferior direito lógico estará em central_pt, deslocado pelo scroll.
+        self.utils.pico.pico_set_color((0, 0, 255, 255)) # Azul
+        self.utils.pico.pico_set_anchor_pos((PICO_RIGHT, PICO_BOTTOM))
+        self.utils.pico.pico_output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
+        
+        # Retorna o scroll para (0,0) para não afetar outros testes
+        self.utils.pico.pico_set_scroll((0, 0))
+
+        self.utils.pico.pico_output_present()
+        self.utils.screenshot_and_compare("anchor_with_camera_scroll.png")

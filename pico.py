@@ -178,6 +178,7 @@ class PicoPy:
         elif self.S.flip[0]: # Apenas flip horizontal
             flip = sdl2.SDL_FLIP_HORIZONTAL
 
+        
         # Renderização final
         # Copia a textura para o renderizador aplicando todas as transformações:
         # ângulo atual + offset de flip, centro de rotação e modo de espelhamento.
@@ -835,6 +836,18 @@ class PicoPy:
         Ex: pico_set_style(PICO_STYLE.FILL)
         """
         self.S.style = style
+
+    def pico_set_scroll(self, pos):
+        """Define o deslocamento da câmera (scroll).
+
+        Args:
+            pos: (x, y) As novas coordenadas de deslocamento.
+        """
+        self.S.scroll = pos
+
+    def pico_get_scroll(self):
+        """Obtém o deslocamento atual da câmera (scroll)."""
+        return self.S.scroll
 
     def pico_set_color(self, color):
         """
