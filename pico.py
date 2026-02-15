@@ -201,9 +201,11 @@ class PicoPy:
 
     def _zoom(self):
         """Calcula dimensões com zoom aplicado"""
+        zx = max(1, self.S.zoom[0])
+        zy = max(1, self.S.zoom[1])
         return (
-            self.S.dim_world[0] * self.S.zoom[0] // 100,
-            self.S.dim_world[1] * self.S.zoom[1] // 100
+            max(1, self.S.dim_world[0] * 100 // zx),
+            max(1, self.S.dim_world[1] * 100 // zy)
         )
 
     def _show_grid(self):
