@@ -48,8 +48,8 @@ class TestDrawImage(PicoTestBase):
         self.utils.pico.pico_set_dim_window(original_dim_window)
         self.utils.pico.pico_set_dim_world(original_dim_world)
 
-    def test_draw_image_with_zoom_200_200(self):
-        """Testa o desenho de uma imagem com zoom de 200.
+    def test_draw_image_with_zoom_50_50(self):
+        """Testa o desenho de uma imagem com zoom de 50.
         A imagem deve ficar menor que a imagem sem zoom.
         """
         original_dim_window = self.utils.pico.pico_get_dim_window()
@@ -65,11 +65,11 @@ class TestDrawImage(PicoTestBase):
         center_x = window_width / 2
         center_y = window_height/ 2
         # Desenho com zoom de 200%
-        self.utils.pico.pico_set_zoom((200, 200))
+        self.utils.pico.pico_set_zoom((50, 50))
         self.utils.pico.pico_output_clear() # limpa a nova textura com o preto
         self.utils.pico.pico_output_draw_image((center_x, center_y), SKY_IMAGE_PATH)
         self.utils.pico.pico_output_present()
-        self.utils.screenshot_and_compare("simple_image_center_x_zoom_200.png")
+        self.utils.screenshot_and_compare("simple_image_center_x_zoom_50.png")
         # Restaura dimensões originais
         self.utils.pico.pico_set_dim_window(original_dim_window)
         self.utils.pico.pico_set_dim_world(original_dim_world)
@@ -129,9 +129,9 @@ class TestDrawImage(PicoTestBase):
         self.utils.pico.pico_set_dim_window(original_dim_window)
         self.utils.pico.pico_set_dim_world(original_dim_world)
 
-    def test_draw_image_with_zoom_60_60(self):
+    def test_draw_image_with_zoom_160_160(self):
         """
-        Testa o desenho de uma imagem com zoom de (60,60).
+        Testa o desenho de uma imagem com zoom de (160,160).
         A imagem deve ficar maior que a imagem sem zoom.
         """
         original_dim_window = self.utils.pico.pico_get_dim_window()
@@ -145,11 +145,11 @@ class TestDrawImage(PicoTestBase):
         center_x = window_width / 2
         center_y = window_height/ 2
         # Desenho com zoom de 60
-        self.utils.pico.pico_set_zoom((60, 60))
+        self.utils.pico.pico_set_zoom((167, 167))
         self.utils.pico.pico_output_clear()
         self.utils.pico.pico_output_draw_image((center_x, center_y), SKY_IMAGE_PATH)
         self.utils.pico.pico_output_present()
-        self.utils.screenshot_and_compare("simple_image_center_x_zoom_60.png")
+        self.utils.screenshot_and_compare("simple_image_center_x_zoom_160.png")
         # Restaura dimensões originais
         self.utils.pico.pico_set_dim_window(original_dim_window)
         self.utils.pico.pico_set_dim_world(original_dim_world)

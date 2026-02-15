@@ -54,15 +54,16 @@ class TestDrawBuffer(PicoTestBase):
         # Posição centralizada para zoom 100%: (64//2 - 5, 36//2 - 5) = (27, 13)
         pos_centro = (27, 13)
         self.utils.pico.pico_output_draw_buffer(pos_centro, buffer, dim)
+
         self.utils.screenshot_and_compare("test_draw_buffer_fixed_pos_100_percent_zoom.png")
 
-        # --- Teste 2: Zoom de 200%(Objeto deve ficar menor) ---
+        # --- Teste 2: Zoom de 200%(Objeto deve ficar maior) ---
         self.utils.pico.pico_set_zoom((200, 200))
         self.utils.pico.pico_output_clear() # Limpa a textura antes de desenhar
         self.utils.pico.pico_output_draw_buffer(pos_centro, buffer, dim)
         self.utils.screenshot_and_compare("test_draw_buffer_fixed_pos_200_percent_zoom.png")
 
-        # --- Teste 3: Zoom de 50%(Objetos deve ficar maior) ---
+        # --- Teste 3: Zoom de 50%(Objeto deve ficar menor) ---
         self.utils.pico.pico_set_zoom((50, 50))
         self.utils.pico.pico_output_clear() # Limpa a textura antes de desenhar
         self.utils.pico.pico_output_draw_buffer(pos_centro, buffer, dim)
