@@ -11,6 +11,7 @@ def utils():
     """
     pico = PicoPy()
     pico.pico_init(1)
+    pico.pico_set_grid_world_unit(1)
     utils = PicoTestUtils(pico)
     yield utils
     pico.pico_init(0)

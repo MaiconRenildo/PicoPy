@@ -33,3 +33,4 @@ class PicoState:
         self.style = PICO_FILL
         self.scale: tuple[int, int] = (100, 100)
         self.zoom: tuple[int, int] = (100, 100)
+        self.grid_world_unit: int = 20
