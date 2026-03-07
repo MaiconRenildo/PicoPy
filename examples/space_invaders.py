@@ -228,9 +228,15 @@ def main():
             for bullet in player_bullets:
                 pico_app.pico_output_draw_rect((bullet['x'], bullet['y'], bullet['w'], bullet['h']))
 
-            # Desenha jogador
+            # Desenha jogador (formato de nave triangular)
             pico_app.pico_set_color(PLAYER_COLOR)
-            pico_app.pico_output_draw_rect((player['x'], player['y'], player['w'], player['h']))
+            # Definir os vértices do triângulo para a nave
+            player_vertices = [
+                (player['x'] + player['w'] // 2, player['y']),           # Topo central
+                (player['x'], player['y'] + player['h']),               # Base esquerda
+                (player['x'] + player['w'], player['y'] + player['h'])  # Base direita
+            ]
+            pico_app.pico_output_draw_poly(player_vertices, len(player_vertices))
         else:
             # Desenha tela de Game Over simples (texto)
             pico_app.pico_set_color((255, 255, 255, 255)) # Branco
