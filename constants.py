@@ -28,5 +28,5 @@ PICO_BYTES_PER_PIXEL_RGBA32 = 4
 # Dimensão especial para manter tamanho original
 PICO_DIM_KEEP = (0, 0)
 
-# Cor cinza padrão usada para fundo e grade
-PICO_COLOR_GRAY = (119, 119, 119, 119)
+# Tipo genérico para chaves de teclado (usa diretamente os códigos de scan do SDL)
+PICO_ANY = 9999

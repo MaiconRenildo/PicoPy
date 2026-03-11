@@ -4,7 +4,15 @@ import sdl2  # type: ignore
 import sdl2.sdlttf as sdlttf  # type: ignore
 import sdl2.sdlmixer as sdlmixer  # type: ignore
 import sdl2.sdlimage as sdlimage  # type: ignore
-from sdl2 import SDL_GetError # type: ignore
+from sdl2 import (
+    SDLK_KP_0,
+    SDLK_KP_MINUS,
+    SDLK_KP_PLUS,
+    SDL_GetError,
+    SDLK_0, SDLK_MINUS, SDLK_EQUALS, SDLK_LEFT, SDLK_RIGHT, SDLK_UP, SDLK_DOWN, SDLK_g, SDLK_s,
+    SDL_SCANCODE_LCTRL, SDL_SCANCODE_RCTRL,
+    SDL_QUIT, SDL_KEYDOWN, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP, SDL_MOUSEMOTION, SDL_FIRSTEVENT, SDL_LASTEVENT
+) # type: ignore
 import sdl2.sdlgfx as sdlgfx
 from state import PicoState
 from constants import (
@@ -16,10 +24,12 @@ from constants import (
     PICO_CLIP_RESET,
     PICO_BYTES_PER_PIXEL_RGBA32,
     PICO_DIM_KEEP,
-    PICO_COLOR_GRAY,
+    PICO_ANY,
 )
 from tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 
+
+PICO_COLOR_GRAY = (119, 119, 119, 119) # Cor cinza padrão usada para fundo e grade
 
 class PicoPy:
     def __init__(self):
@@ -28,6 +38,7 @@ class PicoPy:
         self.REN = None  # Renderer(responsável por desenhar na janela)
         self.TEX = None  # Textura(superfície de renderização alvo)
         self._pico_hash: dict | None = None  # Tabela hash
+        self._pending_events: list = []  # Eventos recebidos durante pico_input_delay, entregues em pico_input_event_ask
 
     ####################### PRIVATE FUNCTIONS #######################
     def _noclip(self):
@@ -189,7 +200,7 @@ class PicoPy:
             rot_center,
             flip
         )
-        self._pico_output_present(0)
+        # self._pico_output_present(0)
 
     def _copy_TEX_to_window(self):
         """Copia a textura principal do mundo(TEX) para a janela(BackBuffer)"""
@@ -207,29 +218,65 @@ class PicoPy:
             max(1, self.S.dim_world[0] * 100 // zx),
             max(1, self.S.dim_world[1] * 100 // zy)
         )
-
+    
     def _show_grid(self):
-        """Mostra a grade se estiver habilitada"""
+        """
+        Mostra a grade se estiver habilitada.
+        A grade se alinha com as unidades do mundo lógico, escala com o zoom
+        e some se ficar muito densa ou muito esparsa em pixels na tela.
+        """
         if not self.S.grid:
             return
         
-        self._pico_set_color(PICO_COLOR_GRAY)
+        self._pico_set_color(PICO_COLOR_GRAY) # Define a cor da grade
+        # Garante que o zoom não é zero para evitar divisão por zero
+        zoom_x = max(1, self.S.zoom[0])
+        zoom_y = max(1, self.S.zoom[1])
         
-        zoom_dim = self._zoom()
+        # Calcula a escala: quantos pixels da janela correspondem a 1 unidade do mundo.
+        # esta escala converte unidades do mundo para pixels de tela.
+        scale_x = (self.S.dim_window[0] * zoom_x) / (self.S.dim_world[0] * 100.0) if self.S.dim_world[0] != 0 else 1.0
+        scale_y = (self.S.dim_window[1] * zoom_y) / (self.S.dim_world[1] * 100.0) if self.S.dim_world[1] != 0 else 1.0
+
+        # Calcula o espaçamento das linhas da grade em pixels na tela.
+        step_x_pixels = int(self.S.grid_world_unit * scale_x)
+        step_y_pixels = int(self.S.grid_world_unit * scale_y)
+
+        # Define limites razoáveis para o espaçamento da grade em pixels na tela.
+        # Se as linhas ficarem muito próximas (densas) ou muito distantes (esparsas),
+        # a grade não será desenhada nesse eixo.
+        MIN_STEP_VISIBILITY_PX = 5 # As linhas precisam ter pelo menos 5 pixels de distância para aparecer
+        MAX_STEP_VISIBILITY_PX_RATIO = 2 # Se o espaçamento for maior que 2x a dimensão da janela, a grade não aparece
+
+        # Verifica e ajusta step_x_pixels
+        if step_x_pixels < MIN_STEP_VISIBILITY_PX or step_x_pixels > (self.S.dim_window[0] * MAX_STEP_VISIBILITY_PX_RATIO):
+            step_x_pixels = 0 # Se fora do limite, não desenha linhas verticais
         
-        # Linhas verticais
-        if (self.S.dim_window[0] % zoom_dim[0] == 0) and (zoom_dim[0] < self.S.dim_window[0]):
-            step = self.S.dim_window[0] // zoom_dim[0]
-            for i in range(0, self.S.dim_window[0] + 1, step):
-                sdl2.SDL_RenderDrawLine(self.REN, i, 0, i, self.S.dim_window[1])
+        # Verifica e ajusta step_y_pixels
+        if step_y_pixels < MIN_STEP_VISIBILITY_PX or step_y_pixels > (self.S.dim_window[1] * MAX_STEP_VISIBILITY_PX_RATIO):
+            step_y_pixels = 0 # Se fora do limite, não desenha linhas horizontais
+
+        # Calcula o deslocamento inicial para alinhar a grade com o scroll do mundo.
+        # Isso garante que a grade "role" junto com a vista do mundo, mantendo o padrão alinhado
+        # aos múltiplos de grid_world_unit no espaço do mundo lógico.
+        offset_x_screen = (self.S.scroll[0] % self.S.grid_world_unit) * scale_x
+        offset_y_screen = (self.S.scroll[1] % self.S.grid_world_unit) * scale_y
+
+        # Desenha as linhas verticais
+        if step_x_pixels > 0: # Só desenha se o passo for válido (não zero)
+            # O loop começa com um offset negativo para garantir que as linhas cubram toda a janela,
+            # mesmo com o deslocamento causado pelo scroll.
+            for x_draw in range(int(-offset_x_screen), self.S.dim_window[0] + 1, step_x_pixels):
+                sdl2.SDL_RenderDrawLine(self.REN, x_draw, 0, x_draw, self.S.dim_window[1])
+
+        # Desenha as linhas horizontais
+        if step_y_pixels > 0: # Só desenha se o passo for válido (não zero)
+            # O loop começa com um offset negativo para garantir que as linhas cubram toda a janela,
+            # mesmo com o deslocamento causado pelo scroll.
+            for y_draw in range(int(-offset_y_screen), self.S.dim_window[1] + 1, step_y_pixels):
+                sdl2.SDL_RenderDrawLine(self.REN, 0, y_draw, self.S.dim_window[0], y_draw)
         
-        # Linhas horizontais
-        if (self.S.dim_window[1] % zoom_dim[1] == 0) and (zoom_dim[1] < self.S.dim_window[1]):
-            step = self.S.dim_window[1] // zoom_dim[1]
-            for j in range(0, self.S.dim_window[1] + 1, step):
-                sdl2.SDL_RenderDrawLine(self.REN, 0, j, self.S.dim_window[0], j)
-        
-        self._restore_draw_color()
+        self._restore_draw_color() # Restaura a cor de desenho original
 
     def _pico_output_present(self, force):
         """Apresenta o conteúdo renderizado da textura TEX para a tela"""
@@ -241,8 +288,8 @@ class PicoPy:
 
         # Apresenta
         self._change_target_to_window()
-        self._pico_set_color(PICO_COLOR_GRAY)
-        self._clear_target_with_defined_color()
+        # self._pico_set_color(PICO_COLOR_GRAY)
+        # self._clear_target_with_defined_color()
         self._copy_TEX_to_window() # Seta o conteúdo no BackBuffer da janela
         self._show_grid() # Desenha a grade POR CIMA(no BackBuffer da janela)
         self._show_on_screen()
@@ -268,6 +315,100 @@ class PicoPy:
     def _Y(self, v, h):
         """Calcula coordenada Y final (com anchor e scroll)"""
         return self._vanchor(v, h) - self.S.scroll[1]
+
+    def _event_from_sdl(self, e: sdl2.SDL_Event, xp: int) -> int:
+        """
+        Processa eventos SDL, lida com ações automáticas e ajusta coordenadas do mouse.
+        
+        Args:
+            e: O evento SDL atual.
+            xp: O tipo de evento esperado (PICO_ANY para qualquer evento).
+        Returns:
+            1 se o evento corresponde ao tipo esperado, 0 caso contrário.
+        """
+        if e.type == SDL_QUIT:
+            if not self.S.expert:
+                print("Fechando PicoPy...")
+                sys.exit(0)
+            else:
+                return 0
+            # else: retorna 0 para que o evento seja manipulado pelo usuário no modo expert
+            # ou tratado como um evento não esperado se xp não for SDL_QUIT
+        
+        elif e.type == SDL_KEYDOWN:
+            # print(f"Evento de teclado: {e.key.keysym.sym}")
+            state = sdl2.SDL_GetKeyboardState(None)
+            if not (state[SDL_SCANCODE_LCTRL] or state[SDL_SCANCODE_RCTRL]): # type: ignore
+                pass # Não é CTRL, continua o fluxo para ver se xp corresponde
+            else:
+                # Ações com CTRL
+                if e.key.keysym.sym in [SDLK_0, SDLK_KP_0]:
+                    # Reset zoom e scroll
+                    self.pico_set_zoom((100, 100))
+                    self.pico_set_scroll((0, 0))
+                    return 0 # Evento tratado internamente, não repassa
+                elif e.key.keysym.sym in [SDLK_MINUS, SDLK_KP_MINUS]:
+                    self.pico_set_zoom((max(1, self.S.zoom[0] - 10), max(1, self.S.zoom[1] - 10)))
+                    return 0
+                elif e.key.keysym.sym in [SDLK_EQUALS, SDLK_KP_PLUS]:
+                    self.pico_set_zoom((self.S.zoom[0] + 10, self.S.zoom[1] + 10))
+                    return 0
+                elif e.key.keysym.sym == SDLK_LEFT: # Scroll para a esquerda (Ctrl + Left)
+                    self.pico_set_scroll((self.S.scroll[0] - max(1, self.S.dim_world[0] // 20), self.S.scroll[1]))
+                    return 0
+                elif e.key.keysym.sym == SDLK_RIGHT: # Scroll para a direita (Ctrl + Right)
+                    self.pico_set_scroll((self.S.scroll[0] + max(1, self.S.dim_world[0] // 20), self.S.scroll[1]))
+                    return 0
+                elif e.key.keysym.sym == SDLK_UP: # Scroll para cima (Ctrl + Up)
+                    self.pico_set_scroll((self.S.scroll[0], self.S.scroll[1] - max(1, self.S.dim_world[1] // 20)))
+                    return 0
+                elif e.key.keysym.sym == SDLK_DOWN: # Scroll para baixo (Ctrl + Down)
+                    self.pico_set_scroll((self.S.scroll[0], self.S.scroll[1] + max(1, self.S.dim_world[1] // 20)))
+                    return 0
+                elif e.key.keysym.sym == SDLK_s: # Tira um screenshot (Ctrl + s)
+                    self.pico_output_screenshot(None)
+                    return 0
+                elif e.key.keysym.sym == SDLK_g: # Liga/desliga a grade (Ctrl + g)
+                    self.pico_set_grid(not self.S.grid)
+                    return 0
+
+        # Verifica se o tipo de evento corresponde ao esperado
+        if xp == e.type:
+            pass # OK
+        elif xp == PICO_ANY:
+            # MAYBE (verifica se é um tipo de evento que queremos "observar")
+            if e.type in [SDL_KEYDOWN, sdl2.SDL_KEYUP, SDL_MOUSEBUTTONDOWN,
+                          SDL_MOUSEBUTTONUP, SDL_MOUSEMOTION, SDL_QUIT]:
+                pass # OK
+            else:
+                return 0 # Não é um evento que estamos interessados no PICO_ANY
+        else:
+            return 0 # Não é o evento esperado
+
+        # Ajusta coordenadas SDL -> posições lógicas do mouse
+        if e.type in [SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP, SDL_MOUSEMOTION]:
+            original_x = e.button.x if hasattr(e, 'button') else e.motion.x
+            original_y = e.button.y if hasattr(e, 'button') else e.motion.y
+            # Variáveis para armazenar as coordenadas lógicas (flutuantes)
+            lx = ctypes.c_float()
+            ly = ctypes.c_float()
+            # Converte as coordenadas de pixels da janela para o sistema lógico do renderizador (já com zoom)
+            sdl2.SDL_RenderWindowToLogical(
+                self.REN,
+                original_x, original_y,
+                ctypes.byref(lx), ctypes.byref(ly)
+            )
+            # Aplica o scroll para obter a posição final no mundo lógico
+            final_x = int(lx.value) + self.S.scroll[0]
+            final_y = int(ly.value) + self.S.scroll[1]
+            if hasattr(e, 'button'):
+                e.button.x = final_x
+                e.button.y = final_y
+            if hasattr(e, 'motion'):
+                e.motion.x = final_x
+                e.motion.y = final_y
+
+        return 1 # Evento corresponde e foi processado (ou é PICO_ANY e é relevante)
     #################################################################
 
     ######################### API FUNCTIONS #########################
@@ -302,7 +443,7 @@ class PicoPy:
             self.REN = sdl2.SDL_CreateRenderer(
                 self.WIN,
                 -1, # Índice do driver de renderização -> -1 para usar o primeiro driver disponível
-                sdl2.SDL_RENDERER_ACCELERATED # Usar aceleração de hardware(GPU) quando disponível
+                sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_PRESENTVSYNC  # Usar aceleração de hardware(GPU) quando disponível
             )
             self.pico_assert(self.REN is not None)
             
@@ -380,7 +521,7 @@ class PicoPy:
                 clip = self._get_current_clip()
                 sdl2.SDL_RenderFillRect(self.REN, clip) # Preenche a região do clip com a cor de limpeza
             self._restore_draw_color()
-            self._pico_output_present(0)
+            # self._pico_output_present(0)
 
     def pico_output_present(self):
         """Apresenta o conteúdo renderizado na tela"""
@@ -839,6 +980,17 @@ class PicoPy:
         """
         self.S.style = style
 
+    def pico_get_key(self, key):
+        """Verifica se uma tecla específica está pressionada.
+
+        Args:
+            key: O código da tecla a ser verificada (e.g., sdl2.SDL_SCANCODE_A).
+        Returns:
+            1 se a tecla estiver pressionada, 0 caso contrário.
+        """
+        keys = sdl2.SDL_GetKeyboardState(None)
+        return keys[key] # type: ignore
+
     def pico_set_scroll(self, pos):
         """Define o deslocamento da câmera (scroll).
 
@@ -851,10 +1003,176 @@ class PicoPy:
         """Obtém o deslocamento atual da câmera (scroll)."""
         return self.S.scroll
 
+    def pico_input_delay(self, ms: int):
+        """Pausa a execução por um tempo especificado, processando eventos SDL.
+
+        Args:
+            ms: O tempo em milissegundos para atrasar.
+        """
+        start_ticks = sdl2.SDL_GetTicks()
+        while True:
+            # time.sleep(0.016)
+            e = sdl2.SDL_Event()
+            has_event = sdl2.SDL_WaitEventTimeout(ctypes.byref(e), ms)
+            if has_event:
+                if self._event_from_sdl(e, PICO_ANY):
+                    novo = sdl2.SDL_Event()
+                    ctypes.memmove(ctypes.byref(novo), ctypes.byref(e), ctypes.sizeof(e))
+                    self._pending_events.append(novo)
+            elapsed_time = sdl2.SDL_GetTicks() - start_ticks
+            ms -= elapsed_time
+
+            if ms <= 0:
+                return
+            start_ticks = sdl2.SDL_GetTicks() # Reinicia o contador para o próximo ciclo de espera
+
+    def pico_input_event_ask(self, evt: sdl2.SDL_Event, type: int) -> int:
+        """
+        Verifica se um evento SDL do tipo especificado está disponível imediatamente.
+
+        Args:
+            evt: Um objeto SDL_Event onde o evento será copiado (se houver).
+            type: O tipo de evento esperado (use PICO_ANY para qualquer evento).
+        Returns:
+            1 se o evento corresponde e foi processado, 0 caso contrário.
+        """
+        if self._pending_events:
+            e = self._pending_events.pop(0)
+            evt.type = e.type
+            if e.type == sdl2.SDL_KEYDOWN or e.type == sdl2.SDL_KEYUP:
+                evt.key = e.key
+            elif e.type == sdl2.SDL_MOUSEBUTTONDOWN or e.type == sdl2.SDL_MOUSEBUTTONUP:
+                evt.button = e.button
+            elif e.type == sdl2.SDL_MOUSEMOTION:
+                evt.motion = e.motion
+            return 1
+        e = sdl2.SDL_Event()
+        has_event = sdl2.SDL_PollEvent(ctypes.byref(e))
+        if not has_event:
+            return 0
+        if self._event_from_sdl(e, type):
+            evt.type = e.type
+            if e.type == sdl2.SDL_KEYDOWN or e.type == sdl2.SDL_KEYUP:
+                evt.key = e.key
+            elif e.type == sdl2.SDL_MOUSEBUTTONDOWN or e.type == sdl2.SDL_MOUSEBUTTONUP:
+                evt.button = e.button
+            elif e.type == sdl2.SDL_MOUSEMOTION:
+                evt.motion = e.motion
+            return 1
+        return 0
+
     def pico_set_color(self, color):
         """
         Define a cor de desenho para futuras operações.
         """
         self.S.color_draw = color
         self._pico_set_color(color)
+
+    def pico_set_grid_world_unit(self, unit: int):
+        self.S.grid_world_unit = unit
+
+    def pico_set_anchor_rotate(self, anchor: tuple[int, int]):
+        """Define o ponto de ancoragem para a rotação de objetos.
+        
+        Args:
+            anchor: Uma tupla (x, y) de percentagens (0-100) que define o ponto de ancoragem.
+                    (0, 0) para o canto superior esquerdo, (50, 50) para o centro, (100, 100) para o canto inferior direito.
+        """
+        # Validação básica para garantir que os valores estão dentro da faixa de 0-100
+        x_anchor = max(0, min(100, anchor[0]))
+        y_anchor = max(0, min(100, anchor[1]))
+        self.S.anchor_rotate = (x_anchor, y_anchor)
+
+    def pico_get_angle(self) -> float:
+        """
+        Obtém o ângulo de rotação atual.
+
+        Returns:
+            O ângulo de rotação em graus.
+        """
+        return self.S.angle
+
+    def pico_get_anchor_rotate(self) -> tuple[int, int]:
+        """
+        Obtém a posição de ancoragem para rotação.
+
+        Returns:
+            Uma tupla (x, y) representando as percentagens (0-100) do ponto
+            de ancoragem para rotação.
+        """
+        return self.S.anchor_rotate
+
+    def pico_get_anchor_pos(self) -> tuple[int, int]:
+        """
+        Obtém a posição de ancoragem para desenho.
+
+        Returns:
+            Uma tupla (x, y) representando as percentagens (0-100) do ponto
+            de ancoragem para posicionamento.
+        """
+        return self.S.anchor_pos
+
+    def pico_set_angle(self, angle: float):
+        """
+        Define o ângulo de rotação.
+
+        Args:
+            angle: O ângulo de rotação em graus.
+        """
+        self.S.angle = angle
+
+
     #################################################################
+    def pico_output_draw_text(self, pos: tuple[int, int], text: str):
+        """
+        Desenha um texto na tela usando a posição e a fonte/cor atual.
+
+        Args:
+            pos: Uma tupla (x, y) representando a posição do texto.
+            text: A string de texto a ser desenhada.
+        """
+        # Chama a versão estendida, mantendo o tamanho da fonte atual
+        self.pico_output_draw_text_ext(pos, text, self.S.font_h) # Assumindo self.S.font_size armazena o tamanho
+                                                                    # para corresponder ao PICO_SIZE_KEEP do C
+                                                                    # ou ajuste para um valor padrão se não houver um "current_font_size"
+
+    def pico_output_draw_text_ext(self, pos: tuple[int, int], text: str, size: int):
+        """
+        Desenha um texto na tela usando a posição, string e tamanho de fonte especificados.
+
+        Args:
+            pos: Uma tupla (x, y) representando a posição do texto.
+            text: A string de texto a ser desenhada.
+            size: O tamanho da fonte a ser usado para este texto.
+        """
+        if not text:
+            return
+
+        if self.S.font_ttf is None:
+            print("Erro: Nenhuma fonte TTF carregada. Chame pico_set_font primeiro.")
+            return
+
+        # Renderiza o texto para uma SDL_Surface
+        sdl_color = sdl2.SDL_Color(self.S.color_draw[0], self.S.color_draw[1], self.S.color_draw[2], self.S.color_draw[3])
+        sfc = sdlttf.TTF_RenderText_Blended(self.S.font_ttf, text.encode('utf-8'), sdl_color) # .encode('utf-8') para C-string
+        if not sfc:
+            print(f"Erro TTF_RenderText_Blended: {sdl2.SDL_GetError().decode('utf-8')}")
+            return
+
+        # Cria uma SDL_Texture a partir da SDL_Surface
+        tex = sdl2.SDL_CreateTextureFromSurface(self.REN, sfc)
+        if not tex:
+            print(f"Erro SDL_CreateTextureFromSurface: {sdl2.SDL_GetError().decode('utf-8')}")
+            sdl2.SDL_FreeSurface(sfc)
+            return
+
+        w = ctypes.c_int()
+        h = ctypes.c_int()
+        sdl2.SDL_QueryTexture(tex, None, None, ctypes.byref(w), ctypes.byref(h))
+        dim = (w.value, h.value)
+
+        self._pico_output_draw_tex(pos, tex, dim)
+
+        # Libera os recursos
+        sdl2.SDL_DestroyTexture(tex)
+        sdl2.SDL_FreeSurface(sfc)

@@ -14,7 +14,7 @@ class PicoState:
         # Define qual ponto do objeto é usado como centro de rotação ao rotacionar algo
         self.anchor_rotate: tuple[int, int] = (PICO_CENTER, PICO_MIDDLE)
         
-        self.angle = 0
+        self.angle: float = 0
         self.clip: tuple[int, int, int, int] = (0, 0, 0, 0)  # (x, y, w, h)
         self.color_clear: tuple[int, int, int, int] = (0, 0, 0, 255)  # (r, g, b, a) - preto
         self.color_draw: tuple[int, int, int, int] = (255, 255, 255, 255)  # branco
@@ -33,3 +33,4 @@ class PicoState:
         self.style = PICO_FILL
         self.scale: tuple[int, int] = (100, 100)
         self.zoom: tuple[int, int] = (100, 100)
+        self.grid_world_unit: int = 20
