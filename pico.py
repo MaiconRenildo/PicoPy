@@ -339,7 +339,6 @@ class PicoPy:
             # print(f"Evento de teclado: {e.key.keysym.sym}")
             state = sdl2.SDL_GetKeyboardState(None)
             if not (state[SDL_SCANCODE_LCTRL] or state[SDL_SCANCODE_RCTRL]): # type: ignore
-                print("1")
                 pass # Não é CTRL, continua o fluxo para ver se xp corresponde
             else:
                 # Ações com CTRL
@@ -349,50 +348,27 @@ class PicoPy:
                     self.pico_set_scroll((0, 0))
                     return 0 # Evento tratado internamente, não repassa
                 elif e.key.keysym.sym in [SDLK_MINUS, SDLK_KP_MINUS]:
-                    print("4")
-                    current_zoom = self.S.zoom
-                    new_zoom_x = max(1, current_zoom[0] - 10)
-                    new_zoom_y = max(1, current_zoom[1] - 10)
-                    self.pico_set_zoom((new_zoom_x, new_zoom_y))
+                    self.pico_set_zoom((max(1, self.S.zoom[0] - 10), max(1, self.S.zoom[1] - 10)))
                     return 0
                 elif e.key.keysym.sym in [SDLK_EQUALS, SDLK_KP_PLUS]:
-                    print("5")
-                    current_zoom = self.S.zoom
-                    new_zoom_x = current_zoom[0] + 10
-                    new_zoom_y = current_zoom[1] + 10
-                    self.pico_set_zoom((new_zoom_x, new_zoom_y))
+                    self.pico_set_zoom((self.S.zoom[0] + 10, self.S.zoom[1] + 10))
                     return 0
                 elif e.key.keysym.sym == SDLK_LEFT: # Scroll para a esquerda (Ctrl + Left)
-                    print("6")
-                    current_scroll = self.S.scroll
-                    scroll_amount_x = max(1, self.S.dim_world[0] // 20)
-                    self.pico_set_scroll((current_scroll[0] - scroll_amount_x, current_scroll[1]))
+                    self.pico_set_scroll((self.S.scroll[0] - max(1, self.S.dim_world[0] // 20), self.S.scroll[1]))
                     return 0
                 elif e.key.keysym.sym == SDLK_RIGHT: # Scroll para a direita (Ctrl + Right)
-                    print("7")
-                    current_scroll = self.S.scroll
-                    scroll_amount_x = max(1, self.S.dim_world[0] // 20)
-                    self.pico_set_scroll((current_scroll[0] + scroll_amount_x, current_scroll[1]))
+                    self.pico_set_scroll((self.S.scroll[0] + max(1, self.S.dim_world[0] // 20), self.S.scroll[1]))
                     return 0
                 elif e.key.keysym.sym == SDLK_UP: # Scroll para cima (Ctrl + Up)
-                    print("8")
-                    current_scroll = self.S.scroll
-                    scroll_amount_y = max(1, self.S.dim_world[1] // 20)
-                    self.pico_set_scroll((current_scroll[0], current_scroll[1] - scroll_amount_y))
+                    self.pico_set_scroll((self.S.scroll[0], self.S.scroll[1] - max(1, self.S.dim_world[1] // 20)))
                     return 0
                 elif e.key.keysym.sym == SDLK_DOWN: # Scroll para baixo (Ctrl + Down)
-                    print("9")
-                    current_scroll = self.S.scroll
-                    scroll_amount_y = max(1, self.S.dim_world[1] // 20)
-                    self.pico_set_scroll((current_scroll[0], current_scroll[1] + scroll_amount_y))
+                    self.pico_set_scroll((self.S.scroll[0], self.S.scroll[1] + max(1, self.S.dim_world[1] // 20)))
                     return 0
                 elif e.key.keysym.sym == SDLK_s: # Tira um screenshot (Ctrl + s)
-                    print("11")
                     self.pico_output_screenshot(None)
                     return 0
-                # ajustar o show grid
                 elif e.key.keysym.sym == SDLK_g: # Liga/desliga a grade (Ctrl + g)
-                    print(self.S.grid)
                     self.pico_set_grid(not self.S.grid)
                     return 0
 
