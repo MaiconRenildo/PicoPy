@@ -1,4 +1,3 @@
-from constants import PICO_FILL, PICO_STROKE
 from tests.base_test import PicoTestBase
 
 
@@ -7,14 +6,14 @@ class TestDrawOval(PicoTestBase):
     
     def test_draw_oval_fill(self):
         """Testa o desenho de uma oval preenchida"""
-        self.utils.pico.pico_output_clear()
-        self.utils.pico.pico_set_style(PICO_FILL)
-        self.utils.pico.pico_output_draw_oval((30, 20, 50, 20)) # x, y, w, h
-        self.utils.screenshot_and_compare("draw_oval_fill.png")
+        self.pico.output_clear()
+        self.pico.set_style(self.pico.DRAW_FILL)
+        self.pico.output_draw_oval((30, 20, 50, 20)) # x, y, w, h
+        self.screenshot_and_compare("draw_oval_fill.png")
 
     def test_draw_oval_stroke(self):
         """Testa o desenho de uma oval contornada"""
-        self.utils.pico.pico_output_clear()
-        self.utils.pico.pico_set_style(PICO_STROKE)
-        self.utils.pico.pico_output_draw_oval((30, 20, 50, 20)) # x, y, w, h
-        self.utils.screenshot_and_compare("draw_oval_stroke.png")
+        self.pico.output_clear()
+        self.pico.set_style(self.pico.DRAW_STROKE)
+        self.pico.output_draw_oval((30, 20, 50, 20)) # x, y, w, h
+        self.screenshot_and_compare("draw_oval_stroke.png")
