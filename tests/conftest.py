@@ -1,5 +1,5 @@
 import pytest
-from pico import PicoPy
+from picopy.pico import PicoPy
 
 @pytest.fixture
 def pico():

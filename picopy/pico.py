@@ -6,9 +6,9 @@ import sdl2.sdlmixer as sdlmixer  # type: ignore
 import sdl2.sdlimage as sdlimage  # type: ignore
 import sdl2.sdlgfx as sdlgfx # type: ignore
 
-from state import PicoState
-from settings import Settings
-from tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
+from .state import PicoState
+from .settings import Settings
+from .tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 
 
 COLOR_GRAY = (119, 119, 119, 119) # Cor cinza padrão usada para fundo e grade
@@ -213,7 +213,6 @@ class PicoPy(Settings):
         Mostra a grade se estiver habilitada, seguindo o padrão SDL do professor.
         Garante que a grade tenha sempre 1 pixel de espessura na tela física.
         """
-        print("show_grid")
         if not self.state.grid:
             return
 
@@ -249,95 +248,6 @@ class PicoPy(Settings):
 
         # Restaura a cor de desenho original
         self._restore_draw_color()
-
-
-
-
-
-# void pico_init (int on) {
-#     if (on) {
-#         _hash = pico_hash_create(HASH);
-#         pico_assert(0 == SDL_Init(SDL_INIT_VIDEO));
-#         WIN = SDL_CreateWindow (
-#             TITLE, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-#             DIM_PHY.x, DIM_PHY.y, SDL_WINDOW_SHOWN
-#         );
-#         pico_assert(WIN != NULL);
-
-#         SDL_CreateRenderer(WIN, -1, SDL_RENDERER_ACCELERATED);
-#         //SDL_CreateRenderer(WIN, -1, SDL_RENDERER_SOFTWARE);
-#         pico_assert(REN != NULL);
-#         SDL_SetRenderDrawBlendMode(REN, SDL_BLENDMODE_BLEND);
-
-#         TTF_Init();
-#         Mix_OpenAudio(22050, AUDIO_S16SYS, 2, 1024);
-
-#         pico_set_size(DIM_PHY, DIM_LOG);
-#         pico_set_font(NULL, 0);
-#         pico_output_clear();
-#     } else {
-#         if (S.font.ttf != NULL) {
-#             TTF_CloseFont(S.font.ttf);
-#         }
-#         Mix_CloseAudio();
-#         TTF_Quit();
-#         SDL_DestroyRenderer(REN);
-#         SDL_DestroyWindow(WIN);
-#         SDL_Quit();
-#         pico_hash_destroy(_hash);
-#     }
-# }
-
-
-
-
-# static void show_grid (void) {
-#     if (!S.grid) return;
-
-#     SDL_SetRenderDrawColor(REN, 0x77,0x77,0x77,0x77);
-
-#     Pico_Dim phy = PHY;
-#     SDL_RenderSetLogicalSize(REN, phy.x, phy.y);
-#     for (int i=0; i<=phy.x; i+=(phy.x/S.size.cur.x)) {
-#         SDL_RenderDrawLine(REN, i, 0, i, phy.y);
-#     }
-#     for (int j=0; j<=phy.y; j+=(phy.y/S.size.cur.y)) {
-#         SDL_RenderDrawLine(REN, 0, j, phy.x, j);
-#     }
-#     SDL_RenderSetLogicalSize(REN, S.size.cur.x, S.size.cur.y);
-
-#     SDL_SetRenderDrawColor (REN,
-#         S.color.draw.r,
-#         S.color.draw.g,
-#         S.color.draw.b,
-#         S.color.draw.a
-#     );
-# }
-
-# static void _output_present (int force) {
-#     if (S.expert && !force) return;
-#     SDL_SetRenderTarget(REN, NULL);
-#     SDL_SetRenderDrawColor(REN, 0x77,0x77,0x77,0x77);
-#     SDL_RenderClear(REN);
-#     SDL_RenderCopy(REN, TEX, NULL, NULL);
-#     show_grid();
-#     SDL_RenderPresent(REN);
-#     SDL_SetRenderDrawColor (REN,
-#         S.color.draw.r,
-#         S.color.draw.g,
-#         S.color.draw.b,
-#         S.color.draw.a
-#     );
-#     SDL_SetRenderTarget(REN, TEX);
-# }
-
-# void pico_output_present (void) {
-#     _output_present(1);
-# }
-
-
-
-
 
 
     def _output_present(self, force):

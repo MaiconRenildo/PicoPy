@@ -2,6 +2,8 @@
 
 ## Configuração do Ambiente
 
+Para configurar o ambiente do PicoPy, siga estes passos:
+
 ### 1. Instalar bibliotecas SDL2 no sistema
 
 **Linux (Ubuntu/Debian):**
@@ -13,54 +15,36 @@ sudo apt-get install -y libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-
 **Windows:**
 Baixe os binários do SDL2 de [https://www.libsdl.org/download-2.0.php](https://www.libsdl.org/download-2.0.php) e configure as variáveis de ambiente.
 
-### 2. Criar o ambiente virtual
+### 2. Configurar o ambiente Python
+
+Após instalar as bibliotecas SDL2 do sistema, navegue até a raiz do repositório clonado e execute o comando `make setup`. Este comando irá:
+
+*   Criar uma [Virtual Environment (venv)](https://docs.python.org/3/library/venv.html) para o projeto (se ainda não existir).
+*   Instalar todas as dependências Python necessárias (incluindo `setuptools`, `wheel`, o próprio pacote `PicoPy` em modo editável, e as dependências listadas em `requirements.txt`).
 
 ```bash
-python3 -m venv venv
+# Na raiz do seu repositório PicoPy
+make setup
 ```
 
-### 3. Ativar o ambiente virtual
+**Setup completo! Para ativar a virtual environment e começar a trabalhar/executar exemplos, use um dos seguintes comandos:**
 
-**Linux/Mac:**
-```bash
-source venv/bin/activate
-```
-
-**Windows:**
-```bash
-venv\Scripts\activate
-```
-
-### 4. Instalar dependências Python
-
-Com o ambiente virtual ativado, instale todas as dependências do arquivo `requirements.txt`:
-
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-**Nota:** Este passo só precisa ser feito uma vez ao configurar o projeto pela primeira vez, ou quando novas dependências forem adicionadas ao `requirements.txt`.
+*   **Linux/macOS:** `source venv/bin/activate`
+*   **Windows (cmd.exe):** `venv\Scripts\activate.bat`
+*   **Windows (PowerShell):** `venv\Scripts\Activate.ps1`
 
 ## Uso
 
-Sempre que for trabalhar no projeto, ative o ambiente virtual:
+Com a virtual environment ativada, você pode executar seus scripts ou exemplos:
 
 ```bash
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate    # Windows
-```
-
-Para desativar o ambiente virtual:
-
-```bash
-deactivate
+# Exemplo:
+python examples/draw_square_on_click.py
 ```
 
 ## Testes
 
-Para executar os testes, com o ambiente virtual ativado:
+Para executar os testes, primeiro configure o ambiente (`make setup`) e depois ative-o. Com o ambiente virtual ativado:
 
 ```bash
 # Executar todos os testes com pytest
@@ -71,13 +55,12 @@ pytest tests/
 
 ### Bibliotecas do Sistema
 
-- **SDL2** - Biblioteca principal de desenvolvimento de jogos e multimídia
-- **SDL2_image** - Suporte para carregamento de imagens (PNG, JPG, etc.)
-- **SDL2_mixer** - Suporte para áudio e música
-- **SDL2_ttf** - Renderização de fontes TrueType
-- **SDL2_gfx** - Funções gráficas adicionais
+-   **SDL2** - Biblioteca principal de desenvolvimento de jogos e multimídia
+-   **SDL2_image** - Suporte para carregamento de imagens (PNG, JPG, etc.)
+-   **SDL2_mixer** - Suporte para áudio e música
+-   **SDL2_ttf** - Renderização de fontes TrueType
+-   **SDL2_gfx** - Funções gráficas adicionais
 
 ### Pacotes Python
 
-- `pysdl2` - Bindings Python para SDL2
-- `pytest` - Framework de testes para Python
+As dependências Python são listadas no arquivo `requirements.txt` e são instaladas automaticamente pelo `Makefile`.
