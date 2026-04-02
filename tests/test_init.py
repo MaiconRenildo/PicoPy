@@ -6,4 +6,4 @@ class TestInit(PicoTestBase):
     
     def test_init_black_screen(self):
         """Testa a inicialização do pico-sdl e verifica se a tela está preta comparando com imagem de referência"""
-        self.utils.screenshot_and_compare("black_screen.png")
+        self.screenshot_and_compare("black_screen.png")
