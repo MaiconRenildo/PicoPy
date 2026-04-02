@@ -1,4 +1,4 @@
-from settings import Settings
+from .settings import Settings
 
 class PicoState:
     def __init__(self):
