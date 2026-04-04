@@ -9,13 +9,13 @@ def main():
     world_height = window_height // pixels_per_world_unit
     pico.set_dim_window((window_width, window_height))
     pico.set_dim_world((world_width, world_height))
-    pico.set_anchor_pos((pico.POS_LEFT, pico.POS_TOP))
     pico.init(True)
 
     square_size = 10
     player_speed = 5
     frame_delay_ms = 16
     
+    pico.set_anchor_pos((pico.POS_LEFT, pico.POS_TOP))
     player_x, player_y = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
     player_square_tuple = (player_x, player_y, square_size, square_size)
 
