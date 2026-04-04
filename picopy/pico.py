@@ -1160,3 +1160,23 @@ class PicoPy(Settings):
         Retorna a mensagem de erro do SDL.
         """
         return sdl2.SDL_GetError().decode('utf-8')
+
+
+    def get_display_resolution(self):
+        """Retorna a largura e altura da resolução do display principal."""
+        try:
+            # Inicializa um subsistema mínimo do SDL para poder consultar o display
+            sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO)
+            
+            # Obtém o display principal
+            display_index = 0 # Geralmente 0 para o display primário
+            display_mode = sdl2.SDL_DisplayMode()
+            
+            # Obtém as informações do display atual
+            if sdl2.SDL_GetCurrentDisplayMode(display_index, display_mode) == 0:
+                return display_mode.w, display_mode.h
+            else:
+                print(f"Erro ao obter resolução do display: {sdl2.SDL_GetError().decode()}")
+                return self.DIM_WINDOW
+        finally:
+            sdl2.SDL_QuitSubSystem(sdl2.SDL_INIT_VIDEO) # Desinicializa o subsistema
