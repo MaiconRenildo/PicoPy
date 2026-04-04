@@ -4,17 +4,13 @@ class TestDrawText(PicoTestBase):
     """Classe de teste para operações de desenho de texto."""
 
     DEFAULT_FONT_SIZE = 10
-    COLOR_WHITE = (255, 255, 255, 255)
-    COLOR_GREEN = (0, 255, 0, 255)
-    COLOR_MAGENTA = (255, 0, 255, 255)
-    COLOR_YELLOW = (255, 255, 0, 255)
 
     def test_draw_text_basic(self):
         """Testa o desenho de texto básico com a fonte padrão."""
         self.pico.set_font(None, self.DEFAULT_FONT_SIZE)
         self.pico.output_clear()
         self.pico.set_anchor_pos((self.pico.POS_LEFT, self.pico.POS_TOP))
-        self.pico.set_color(self.COLOR_WHITE)
+        self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.output_draw_text(self.pico.pos((self.pico.POS_LEFT, self.pico.POS_TOP)), "PicoPy!")
         self.screenshot_and_compare("draw_text_basic.png")
 
@@ -22,7 +18,7 @@ class TestDrawText(PicoTestBase):
         """Testa o desenho de texto centralizado no meio da janela."""
         self.pico.set_font(None, self.DEFAULT_FONT_SIZE)
         self.pico.output_clear()
-        self.pico.set_color(self.COLOR_WHITE)
+        self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.set_anchor_pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_draw_text(self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE)), "Centralized!")
         self.pico.output_present()
@@ -32,7 +28,7 @@ class TestDrawText(PicoTestBase):
         """Testa o desenho de texto com uma cor personalizada, centralizado horizontalmente."""
         self.pico.set_font(None, self.DEFAULT_FONT_SIZE)
         self.pico.output_clear()
-        self.pico.set_color(self.COLOR_GREEN)
+        self.pico.set_color(self.pico.COLOR_GREEN)
         world_w, _ = self.pico.get_dim_world()
         self.pico.set_anchor_pos((self.pico.POS_CENTER, self.pico.POS_TOP))
         self.pico.output_draw_text(self.pico.pos((self.pico.POS_CENTER, self.pico.POS_TOP)), "Green Text!")
@@ -43,7 +39,7 @@ class TestDrawText(PicoTestBase):
         """Testa o desenho de texto com uma cor personalizada, centralizado horizontalmente."""
         self.pico.set_font(None, self.DEFAULT_FONT_SIZE)
         self.pico.output_clear()
-        self.pico.set_color(self.COLOR_GREEN)
+        self.pico.set_color(self.pico.COLOR_GREEN)
         self.pico.set_anchor_pos((self.pico.POS_CENTER, self.pico.POS_BOTTOM))
         self.pico.output_draw_text(self.pico.pos((self.pico.POS_CENTER, self.pico.POS_BOTTOM)), "Green Text!")
         self.screenshot_and_compare("draw_text_green_in_bottom_and_centered.png")
@@ -53,7 +49,7 @@ class TestDrawText(PicoTestBase):
         """Testa o desenho de texto rotacionado."""
         self.pico.set_font(None, self.DEFAULT_FONT_SIZE)
         self.pico.output_clear()
-        self.pico.set_color(self.COLOR_MAGENTA)
+        self.pico.set_color(self.pico.COLOR_MAGENTA)
         original_angle = self.pico.get_angle()
         original_anchor_rotate = self.pico.get_anchor_rotate()
         original_anchor_pos = self.pico.get_anchor_pos()
@@ -81,7 +77,7 @@ class TestDrawText(PicoTestBase):
         """Testa o desenho de texto alinhado à borda direita da janela com ângulo de 90 graus."""
         self.pico.set_font(None, self.DEFAULT_FONT_SIZE)
         self.pico.output_clear()
-        self.pico.set_color(self.COLOR_YELLOW)
+        self.pico.set_color(self.pico.COLOR_YELLOW)
         original_anchor_pos = self.pico.get_anchor_pos()
         try:
             self.pico.set_anchor_pos((self.pico.POS_RIGHT, self.pico.POS_MIDDLE))
@@ -96,7 +92,7 @@ class TestDrawText(PicoTestBase):
         """Testa o desenho de texto alinhado à borda direita da janela com ângulo de -90 graus."""
         self.pico.set_font(None, self.DEFAULT_FONT_SIZE)
         self.pico.output_clear()
-        self.pico.set_color(self.COLOR_YELLOW)
+        self.pico.set_color(self.pico.COLOR_YELLOW)
         original_anchor_pos = self.pico.get_anchor_pos()
         try:
             self.pico.set_anchor_pos((self.pico.POS_RIGHT, self.pico.POS_MIDDLE))
@@ -112,7 +108,7 @@ class TestDrawText(PicoTestBase):
         """Testa o desenho de texto alinhado à borda esquerda da janela com ângulo de 90 graus."""
         self.pico.set_font(None, self.DEFAULT_FONT_SIZE)
         self.pico.output_clear()
-        self.pico.set_color(self.COLOR_YELLOW)
+        self.pico.set_color(self.pico.COLOR_YELLOW)
         original_anchor_pos = self.pico.get_anchor_pos()
         try:
             self.pico.set_anchor_pos((self.pico.POS_LEFT, self.pico.POS_MIDDLE))
@@ -127,7 +123,7 @@ class TestDrawText(PicoTestBase):
         """Testa o desenho de texto alinhado à borda esquerda da janela com ângulo de -90 graus."""
         self.pico.set_font(None, self.DEFAULT_FONT_SIZE)
         self.pico.output_clear()
-        self.pico.set_color(self.COLOR_YELLOW)
+        self.pico.set_color(self.pico.COLOR_YELLOW)
         original_anchor_pos = self.pico.get_anchor_pos()
         try:
             self.pico.set_anchor_pos((self.pico.POS_LEFT, self.pico.POS_MIDDLE))
@@ -143,7 +139,7 @@ class TestDrawText(PicoTestBase):
         self.pico.output_clear()
         font_size = self.DEFAULT_FONT_SIZE
         self.pico.set_font(None, font_size)
-        self.pico.set_color(self.COLOR_YELLOW)
+        self.pico.set_color(self.pico.COLOR_YELLOW)
         self.pico.set_anchor_pos((self.pico.POS_LEFT, self.pico.POS_TOP))
         self.pico.output_draw_text(self.pico.pos((self.pico.POS_LEFT, self.pico.POS_TOP)), "First Line")
         self.pico.output_draw_text(self.pico.pos((self.pico.POS_LEFT, self.pico.POS_TOP), offset=(0, self.DEFAULT_FONT_SIZE)), "Second Line") # Offset para a segunda linha
@@ -153,6 +149,6 @@ class TestDrawText(PicoTestBase):
     def test_draw_text_empty_string(self):
         """Testa o desenho de uma string vazia (não deve renderizar nada)."""
         self.pico.output_clear()
-        self.pico.set_color(self.COLOR_WHITE)
+        self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.output_draw_text(self.pico.pos((self.pico.POS_LEFT, self.pico.POS_TOP), offset=(10, 10)), "")
         self.screenshot_and_compare("draw_text_empty_string.png")

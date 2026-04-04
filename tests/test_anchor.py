@@ -125,12 +125,12 @@ class TestAnchor(PicoTestBase):
         self.pico.set_anchor_pos((self.pico.POS_LEFT, self.pico.POS_BOTTOM))
         pos_large_rect_corner = self.pico.pos((self.pico.POS_LEFT, self.pico.POS_BOTTOM))
         self.pico.output_clear()
-        self.pico.set_color((255, 255, 255, 255))
+        self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.output_draw_rect(
             (pos_large_rect_corner[0], pos_large_rect_corner[1], large_rect_w, large_rect_h)
         )
 
-        self.pico.set_color((255, 0, 0, 255))
+        self.pico.set_color(self.pico.COLOR_RED)
         self.pico.set_anchor_pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         center_x_target = pos_large_rect_corner[0] + large_rect_w / 2
         center_y_target = pos_large_rect_corner[1] - large_rect_h / 2
@@ -138,7 +138,7 @@ class TestAnchor(PicoTestBase):
             (center_x_target, center_y_target, small_rect_w, small_rect_h)
         )
 
-        self.pico.set_color((0, 0, 255, 255))
+        self.pico.set_color(self.pico.COLOR_BLUE)
         self.pico.output_draw_rect(
             (center_x_target, center_y_target, extra_small_rect_w, extra_small_rect_h)
         )
@@ -160,21 +160,21 @@ class TestAnchor(PicoTestBase):
 
         # Retângulo 1: Âncora central (referência) - será branco
         # Seu centro estará exatamente em central_pt
-        self.pico.set_color((255, 255, 255, 255)) # Branco
+        self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.set_anchor_pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
 
         # Retângulo 2: Âncora (25, 25) - será vermelho
         # O ponto a 25% da largura e 25% da altura do retângulo se alinhará com central_pt.
         # Isso fará com que o retângulo se desloque ligeiramente para baixo e para a direita de central_pt.
-        self.pico.set_color((255, 0, 0, 255)) # Vermelho
+        self.pico.set_color(self.pico.COLOR_RED)
         self.pico.set_anchor_pos((25, 25))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
 
         # Retângulo 3: Âncora (75, 75) - será azul
         # O ponto a 75% da largura e 75% da altura do retângulo se alinhará com central_pt.
         # Isso fará com que o retângulo se desloque ligeiramente para cima e para a esquerda de central_pt.
-        self.pico.set_color((0, 0, 255, 255)) # Azul
+        self.pico.set_color(self.pico.COLOR_BLUE)
         self.pico.set_anchor_pos((75, 75))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
 
@@ -193,19 +193,19 @@ class TestAnchor(PicoTestBase):
         self.pico.output_clear()
 
         # Retângulo 1: Âncora central (referência) - será branco
-        self.pico.set_color((255, 255, 255, 255)) # Branco
+        self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.set_anchor_pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
 
         # Retângulo 2: Âncora (-25, -25) - será vermelho
         # Deve aparecer deslocado para a direita e para baixo do central_pt
-        self.pico.set_color((255, 0, 0, 255)) # Vermelho
+        self.pico.set_color(self.pico.COLOR_RED)
         self.pico.set_anchor_pos((-25, -25))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
 
         # Retângulo 3: Âncora (125, 125) - será azul
         # Deve aparecer deslocado para a esquerda e para cima do central_pt
-        self.pico.set_color((0, 0, 255, 255)) # Azul
+        self.pico.set_color(self.pico.COLOR_BLUE)
         self.pico.set_anchor_pos((125, 125))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
 
@@ -224,15 +224,15 @@ class TestAnchor(PicoTestBase):
         self.pico.set_anchor_pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
 
         # Desenha um retângulo maior (20x20) - será azul
-        self.pico.set_color((0, 0, 255, 255)) # Azul
+        self.pico.set_color(self.pico.COLOR_BLUE)
         self.pico.output_draw_rect((central_pt[0], central_pt[1], 20, 20))
 
         # Desenha um retângulo pequeno (4x4) - será vermelho
-        self.pico.set_color((255, 0, 0, 255)) # Vermelho
+        self.pico.set_color(self.pico.COLOR_RED)
         self.pico.output_draw_rect((central_pt[0], central_pt[1], 4, 4))
 
         # Desenha um pixel (1x1) - será branco
-        self.pico.set_color((255, 255, 255, 255)) # Branco
+        self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.output_draw_pixel(central_pt)
 
         self.pico.output_present()
@@ -259,18 +259,18 @@ class TestAnchor(PicoTestBase):
 
         # Retângulo 1: Âncora central (referência) - será branco
         # Seu centro lógico estará em central_pt, mas visualmente deslocado pelo scroll.
-        self.pico.set_color((255, 255, 255, 255)) # Branco
+        self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.set_anchor_pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
 
         # Retângulo 2: Âncora superior esquerda - será vermelho
         # Seu canto superior esquerdo lógico estará em central_pt, deslocado pelo scroll.
-        self.pico.set_color((255, 0, 0, 255)) # Vermelho
+        self.pico.set_color(self.pico.COLOR_RED)
         self.pico.set_anchor_pos((self.pico.POS_LEFT, self.pico.POS_TOP))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
         # Retângulo 3: Âncora inferior direita - será azul
         # Seu canto inferior direito lógico estará em central_pt, deslocado pelo scroll.
-        self.pico.set_color((0, 0, 255, 255)) # Azul
+        self.pico.set_color(self.pico.COLOR_BLUE)
         self.pico.set_anchor_pos((self.pico.POS_RIGHT, self.pico.POS_BOTTOM))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
         

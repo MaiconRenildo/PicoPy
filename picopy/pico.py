@@ -11,8 +11,6 @@ from .settings import Settings
 from .tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 
 
-COLOR_GRAY = (119, 119, 119, 119) # Cor cinza padrão usada para fundo e grade
-
 class PicoPy(Settings):
     def __init__(self):
         self.state = PicoState()
@@ -217,7 +215,7 @@ class PicoPy(Settings):
             return
 
         # Define a cor do grid
-        self._set_color(COLOR_GRAY)
+        self._set_color(self.COLOR_SEMI_TRANSPARENT_GRAY)
 
         # Dimensões físicas da janela (ex: 160x160)
         phy_w = int(self.state.dim_window[0])
@@ -611,7 +609,7 @@ class PicoPy(Settings):
         # A partir daqui, o conteúdo da textura TEX é renderizado para a textura temporária temp_texture
         # Assim como as operações de zoom, scroll, leitura de pixels, etc. são aplicadas na textura temporária temp_text
         self._define_target(temp_texture, self.state.dim_window[0], self.state.dim_window[1])
-        self._set_color(COLOR_GRAY)
+        self._set_color(self.COLOR_SEMI_TRANSPARENT_GRAY)
         self._clear_target_with_defined_color()
         self._copy_TEX_to_window()
         self._show_grid() # Desenha a grade na textura temporária, pois a grade não é desenhada na TEXT
