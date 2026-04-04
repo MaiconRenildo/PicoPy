@@ -6,12 +6,6 @@ class TestDrawBuffer(PicoTestBase):
 
     BUFFER_DIM_SMALL = (10, 10)
     BUFFER_DIM_MEDIUM = (20, 20)
-
-    COLOR_RED = (255, 0, 0, 255)
-    COLOR_BLUE = (0, 0, 255, 255)
-    COLOR_GREEN = (0, 255, 0, 255)
-    COLOR_TRANSPARENT = (0, 0, 0, 0)
-
     ZOOM_100_PERCENT = (100, 100)
     ZOOM_200_PERCENT = (200, 200)
     ZOOM_50_PERCENT = (50, 50)
@@ -22,7 +16,7 @@ class TestDrawBuffer(PicoTestBase):
         """
         dim = self.BUFFER_DIM_SMALL # Define as dimensões do buffer -> 10x10
         # Cria um buffer RGBA para um quadrado vermelho
-        red_pixel = self.COLOR_RED # Cada pixel é (255, 0, 0, 255) para vermelho opaco
+        red_pixel = self.pico.COLOR_RED # Cada pixel é (255, 0, 0, 255) para vermelho opaco
         buffer = [red_pixel] * (dim[0] * dim[1])
         pos = self.pico.pos((self.pico.POS_LEFT, self.pico.POS_TOP), offset=(10, 10))
         self.pico.output_draw_buffer(pos, buffer, dim)
@@ -36,8 +30,8 @@ class TestDrawBuffer(PicoTestBase):
         dim = (buffer_w, buffer_h)
 
         # Cria um buffer azul com um pixel transparente no centro
-        blue_pixel = self.COLOR_BLUE
-        transparent_pixel = self.COLOR_TRANSPARENT
+        blue_pixel = self.pico.COLOR_BLUE
+        transparent_pixel = self.pico.COLOR_TRANSPARENT_BLACK
         buffer: list[tuple[int, int, int, int]] = [blue_pixel] * (buffer_w * buffer_h)
 
         # Coloca um pixel transparente no centro
@@ -58,7 +52,7 @@ class TestDrawBuffer(PicoTestBase):
         """
         buffer_w, buffer_h = self.BUFFER_DIM_SMALL
         dim = (buffer_w, buffer_h)
-        green_pixel = self.COLOR_GREEN
+        green_pixel = self.pico.COLOR_GREEN
         buffer = [green_pixel] * (buffer_w * buffer_h)
         # --- Teste 1: Sem Zoom (100%) - Quadrado Centralizado ---
         self.pico.set_zoom(self.ZOOM_100_PERCENT) # Garante zoom padrão
