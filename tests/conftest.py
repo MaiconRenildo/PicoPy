@@ -7,7 +7,7 @@ def pico():
     Fixture que retorna uma instância do PicoPy, garantindo um ambiente limpo.
     """
     pico = PicoPy()
-    pico.init(1)
+    pico.init(True)
     pico.set_grid_world_unit(1)
     yield pico
-    pico.init(0)
+    pico.init(False)

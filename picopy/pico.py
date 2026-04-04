@@ -382,12 +382,12 @@ class PicoPy(Settings):
     #################################################################
 
     ######################### API FUNCTIONS #########################
-    def init(self, on):
+    def init(self, on: bool):
         """
         Inicializa ou termina o pico-sdl
         
         Args:
-            on: 1 para inicializar, 0 para terminar
+            on: True para inicializar, False para terminar
         """
         # global WIN, REN, TEX, _hash
         
