@@ -5,19 +5,19 @@ import time
 
 from picopy.pico import PicoPy
 
-def check_rect_collision(pico: PicoPy, rect_a_tuple: tuple[int, int, int, int], rect_b_tuple: tuple[int, int, int, int]) -> bool:
+def check_rect_collision(rect_a_tuple: tuple[int, int, int, int], rect_b_tuple: tuple[int, int, int, int]) -> bool:
     """Checks for collision between two rectangles (squares) represented by tuples."""
-    rect_a = pico.create_rect(*rect_a_tuple)
-    rect_b = pico.create_rect(*rect_b_tuple)
-    return (rect_a.x < rect_b.x + rect_b.w and
-            rect_a.x + rect_a.w > rect_b.x and
-            rect_a.y < rect_b.y + rect_b.h and
-            rect_a.y + rect_a.h > rect_b.y)
+    ax, ay, aw, ah = rect_a_tuple
+    bx, by, bw, bh = rect_b_tuple
+    return (ax < bx + bw and
+            ax + aw > bx and
+            ay < by + bh and
+            ay + ah > by)
 
-def handle_collision(pico: PicoPy, player_square_tuple: tuple[int, int, int, int], red_squares_list: list[tuple[int, int, int, int]], consumed_flags: list[int]):
+def handle_collision(player_square_tuple: tuple[int, int, int, int], red_squares_list: list[tuple[int, int, int, int]], consumed_flags: list[int]):
     """Marks red squares as consumed after collision with the player."""
     for i in range(len(red_squares_list)):
-        if not consumed_flags[i] and check_rect_collision(pico, player_square_tuple, red_squares_list[i]):
+        if not consumed_flags[i] and check_rect_collision(player_square_tuple, red_squares_list[i]):
             consumed_flags[i] = 1  # Mark as consumed
 
 def main():
@@ -103,7 +103,7 @@ def main():
             player_x += player_speed
         
         player_square_tuple = (player_x, player_y, square_size, square_size)
-        handle_collision(pico, player_square_tuple, red_squares_list, consumed_flags)
+        handle_collision(player_square_tuple, red_squares_list, consumed_flags)
         pico.output_clear()
 
         # Draw remaining red squares
