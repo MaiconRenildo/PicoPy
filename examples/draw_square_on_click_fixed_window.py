@@ -20,14 +20,13 @@ def main():
     print("Clique na janela do PicoPy para desenhar quadrados azuis. Pressione 'X' para sair.")
     while running:
         while pico.input_event_ask(event, pico.EVENT_ANY):
-            if int(event.type) == pico.EVENT_QUIT:
+            if pico.is_quit_event(event):
                 running = False
-            elif int(event.type) == pico.EVENT_MOUSEBUTTONDOWN:
-                if int(event.button.button) == pico.MOUSE_LEFT:
-                    squares_list.append((event.button.x, event.button.y, square_size, square_size))
-                elif int(event.button.button) == pico.MOUSE_RIGHT:
-                    if squares_list:
-                        squares_list.pop()
+            elif pico.is_mouse_button_event(event, pico.MOUSE_LEFT):
+                squares_list.append((event.button.x, event.button.y, square_size, square_size))
+            elif pico.is_mouse_button_event(event, pico.MOUSE_RIGHT):
+                if squares_list:
+                    squares_list.pop()
         pico.output_clear()
         for rect in squares_list:
             pico.output_draw_rect(rect)

@@ -20,6 +20,8 @@ def main():
     max_y = world_height - square_size
 
     running = True
+    event = pico.new_event_object()
+    
     while running:
         pico.set_style(pico.DRAW_FILL)
         pico.output_clear()  # Limpa a tela para preto
@@ -42,10 +44,8 @@ def main():
         pico.input_delay(delay_ms) # Espera 1 segundo
 
         # Verifica se o usuário fechou a janela durante a espera
-        event = pico.new_event_object()
         while pico.input_event_ask(event, pico.EVENT_QUIT):
-            if event.type == pico.EVENT_QUIT:
-                running = False
+            running = False
         if not running:
             break
     pico.init(False)

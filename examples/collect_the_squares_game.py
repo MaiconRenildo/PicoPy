@@ -89,9 +89,8 @@ def main():
             break
 
         # Process events (keyboard and window close)
-        while pico.input_event_ask(event, pico.EVENT_ANY):
-            if event.type == pico.EVENT_QUIT:
-                running = False
+        while pico.input_event_ask(event, pico.EVENT_QUIT):
+            running = False
         
         if pico.get_key(pico.SCANCODE_W):
             player_y -= player_speed

@@ -24,8 +24,9 @@ def main():
 
     while running:
         while pico.input_event_ask(event_object, pico.EVENT_ANY):
-            if event_object.type == pico.EVENT_QUIT:
+            if pico.is_quit_event(event_object):
                 running = False
+        
         if pico.get_key(pico.SCANCODE_W):
             player_y -= player_speed
         if pico.get_key(pico.SCANCODE_S):
