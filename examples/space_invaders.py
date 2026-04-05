@@ -92,28 +92,55 @@ class Enemy(GameObject):
 
 ###### Functions ######
 def create_enemies_wave(pico: PicoPy, wave_number: int, world_width: int, world_height: int) -> list[Enemy]:
+    # --- Enemy Wave Generation Constants (Local to function) ---
+    BASE_ENEMY_COLS = 6
+    MAX_ENEMY_COLS = 15
+    BASE_ENEMY_ROWS = 3
+    MAX_ENEMY_ROWS = 6
+    ENEMY_WAVE_WIDTH, ENEMY_WAVE_HEIGHT = 3, 2
+    ENEMY_WAVE_SPACING_X, ENEMY_WAVE_SPACING_Y = 6, 5
+    INITIAL_ENEMY_WAVE_Y = 5
+    BASE_ENEMY_WAVE_MOVE_SPEED = 0.5
+    ENEMY_WAVE_SPEED_MULTIPLIER = 0.1
+
     enemies = []
-    enemy_cols = min(6 + wave_number, 15)
-    enemy_rows = min(3 + wave_number // 2, 6)
-    enemy_w, enemy_h = 3, 2
-    enemy_spacing_x, enemy_spacing_y = 6, 5
-    initial_enemy_y = 5
-    enemy_move_speed = 0.5 + wave_number * 0.1
+    enemy_cols = min(BASE_ENEMY_COLS + wave_number, MAX_ENEMY_COLS)
+    enemy_rows = min(BASE_ENEMY_ROWS + wave_number // 2, MAX_ENEMY_ROWS)
+    enemy_w, enemy_h = ENEMY_WAVE_WIDTH, ENEMY_WAVE_HEIGHT
+    enemy_spacing_x, enemy_spacing_y = ENEMY_WAVE_SPACING_X, ENEMY_WAVE_SPACING_Y
+    enemy_move_speed = BASE_ENEMY_WAVE_MOVE_SPEED + wave_number * ENEMY_WAVE_SPEED_MULTIPLIER
     formation_width = enemy_cols * enemy_w + (enemy_cols - 1) * (enemy_spacing_x - enemy_w)
     start_x_offset = (world_width - formation_width) // 2
 
     for row in range(enemy_rows):
         for col in range(enemy_cols):
             ex = start_x_offset + col * enemy_spacing_x
-            ey = initial_enemy_y + row * enemy_spacing_y
+            ey = INITIAL_ENEMY_WAVE_Y + row * enemy_spacing_y
             enemies.append(Enemy(ex, ey, enemy_w, enemy_h, pico.COLOR_RED, enemy_move_speed)) # Using Colors class
     return enemies
 
 
 def main():
-    # constants
+    #### constants ####
     FRAME_DELAY_MS = 16
     SHOT_COOLDOWN_MS = 200 # 200ms between shots
+    
+    # player constants
+    PLAYER_WIDTH = 4
+    PLAYER_HEIGHT = 4
+    PLAYER_INITIAL_SPEED = 1
+
+    # bullet constants
+    BULLET_WIDTH = 1
+    BULLET_HEIGHT = 2
+    BULLET_SPEED = 1
+    
+    # enemy constants
+    ENEMY_DESCENT_AMOUNT = 0.5
+
+    # game over constants
+    GAME_OVER_FONT_SIZE = 10
+    GAME_OVER_MESSAGE_DELAY_MS = 5000
 
 
     pico = PicoPy()
@@ -126,24 +153,21 @@ def main():
     pico.init(True, fullscreen=True)
 
     # Initialize player
-    player_w, player_h = 4,4
     player_x, player_y = pico.pos(
         (pico.POS_CENTER, pico.POS_BOTTOM),
-        offset=(0, -(player_h * 2)) # negative offset to move up from the bottom
+        offset=(0, -(PLAYER_HEIGHT * 2)) # negative offset to move up from the bottom
     )
-    player = Player(player_x, player_y, player_w, player_h, pico.COLOR_GREEN, 1)
+    player = Player(player_x, player_y, PLAYER_WIDTH, PLAYER_HEIGHT, pico.COLOR_GREEN, PLAYER_INITIAL_SPEED)
 
     # Inicialize player bullets
     player_bullets: list[Bullet] = []
-    bullet_w, bullet_h = 1, 2
-    bullet_speed = 1
     last_shot_time = 0
 
     # Inicialize enemies e waves
     current_wave = 1
     enemies: list[Enemy] = create_enemies_wave(pico, current_wave, world_width, world_height)
     enemy_direction = 1 # 1 for right, -1 for left
-    enemy_vertical_move_amount = 0.5
+    enemy_vertical_move_amount = ENEMY_DESCENT_AMOUNT
 
     running = True
     game_over = False
@@ -169,8 +193,8 @@ def main():
         current_ticks = pico.get_ticks() # Time in milliseconds
         if pico.get_key(pico.SCANCODE_SPACE) and (current_ticks - last_shot_time > SHOT_COOLDOWN_MS):
             new_bullet_y = player.y
-            new_bullet_x = player.x + (player.w - bullet_w) // 2
-            new_bullet = Bullet(new_bullet_x, new_bullet_y, bullet_w, bullet_h, pico.COLOR_YELLOW, bullet_speed)
+            new_bullet_x = player.x + (player.w - BULLET_WIDTH) // 2
+            new_bullet = Bullet(new_bullet_x, new_bullet_y, BULLET_WIDTH, BULLET_HEIGHT, pico.COLOR_YELLOW, BULLET_SPEED)
             player_bullets.append(new_bullet)
             last_shot_time = current_ticks
         for bullet in player_bullets:
@@ -240,7 +264,7 @@ def main():
         else:
             pico.output_clear()
             pico.set_color(pico.COLOR_WHITE) # Using Colors class
-            pico.set_font(None, 10) # Assuming font size 10 is appropriate for GAME OVER text
+            pico.set_font(None, GAME_OVER_FONT_SIZE) # Assuming font size 10 is appropriate for GAME OVER text
             text_pos_x, text_pos_y = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
             # Set anchor for text drawing (important for centering)
             pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
@@ -248,7 +272,7 @@ def main():
             pico.set_angle(0)
             pico.output_draw_text(text_pos_x, "GAME OVER!")
             pico.output_present()
-            pico.input_delay(5000) # Keep game over message on screen for 5 seconds
+            pico.input_delay(GAME_OVER_MESSAGE_DELAY_MS) # Keep game over message on screen for 5 seconds
 
         pico.input_delay(FRAME_DELAY_MS)
 
