@@ -1190,11 +1190,11 @@ class PicoPy(Settings):
     
     def is_key_event(self, event, key_scancode: int) -> bool:
         """Verifica se o evento é um pressionamento de tecla DOWN para o scancode especificado."""
-        return event.type == self.EVENT_KEYDOWN and event.key.keysym.sym == key_scancode
+        return event.type == self.EVENT_KEYDOWN and event.key.keysym.scancode == key_scancode
     
     def is_key_up_event(self, event, key_scancode: int) -> bool:
         """Verifica se o evento é um evento de tecla UP para o scancode especificado."""
-        return event.type == self.EVENT_KEYUP and event.key.keysym.sym == key_scancode
+        return event.type == self.EVENT_KEYUP and event.key.keysym.scancode == key_scancode
     
     def is_mouse_button_event(self, event, button: int) -> bool:
         """Verifica se o evento é um evento de botão do mouse para o botão especificado."""
