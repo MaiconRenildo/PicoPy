@@ -270,7 +270,7 @@ def main():
             pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
             pico.set_anchor_rotate((pico.POS_CENTER, pico.POS_MIDDLE))
             pico.set_angle(0)
-            pico.output_draw_text(text_pos_x, "GAME OVER!")
+            pico.output_draw_text((text_pos_x, text_pos_y), "GAME OVER!")
             pico.output_present()
             pico.input_delay(GAME_OVER_MESSAGE_DELAY_MS) # Keep game over message on screen for 5 seconds
 
