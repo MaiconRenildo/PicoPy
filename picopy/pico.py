@@ -382,7 +382,7 @@ class PicoPy(Settings):
     #################################################################
 
     ######################### API FUNCTIONS #########################
-    def init(self, on: bool):
+    def init(self, on: bool, fullscreen: bool = False):
         """
         Inicializa ou termina o pico-sdl
         
@@ -399,13 +399,16 @@ class PicoPy(Settings):
             self._assert(sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) == 0)
             
             # Criar janela
+            window_flags = sdl2.SDL_WINDOW_SHOWN
+            if fullscreen:
+                window_flags |= sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP
             self.WIN = sdl2.SDL_CreateWindow(
                 self.WINDOW_TITLE.encode('utf-8'),
                 sdl2.SDL_WINDOWPOS_UNDEFINED, # Posição X da janela -> sistema que define
                 sdl2.SDL_WINDOWPOS_UNDEFINED, # Posição Y da janela -> sistema que define
                 self.state.dim_window[0], # Largura da janela
                 self.state.dim_window[1], # Altura da janela
-                sdl2.SDL_WINDOW_SHOWN # Janela visível ao ser criada
+                window_flags # Janela visível ao ser criada
             )
             self._assert(self.WIN is not None)
             
@@ -1005,7 +1008,7 @@ class PicoPy(Settings):
             evt: Um objeto SDL_Event onde o evento será copiado (se houver).
             type: O tipo de evento esperado (use ANY para qualquer evento).
         Returns:
-            1 se o evento corresponde e foi processado, 0 caso contrário.
+            True se o evento corresponde e foi processado, False caso contrário.
         """
         if self._pending_events:
             e = self._pending_events.pop(0)
@@ -1016,11 +1019,11 @@ class PicoPy(Settings):
                 evt.button = e.button
             elif e.type == sdl2.SDL_MOUSEMOTION:
                 evt.motion = e.motion
-            return 1
+            return True
         e = sdl2.SDL_Event()
         has_event = sdl2.SDL_PollEvent(ctypes.byref(e))
         if not has_event:
-            return 0
+            return False
         if self._event_from_sdl(e, type):
             evt.type = e.type
             if e.type == sdl2.SDL_KEYDOWN or e.type == sdl2.SDL_KEYUP:
@@ -1029,8 +1032,8 @@ class PicoPy(Settings):
                 evt.button = e.button
             elif e.type == sdl2.SDL_MOUSEMOTION:
                 evt.motion = e.motion
-            return 1
-        return 0
+            return True
+        return False
 
     def set_color(self, color):
         """
@@ -1180,3 +1183,27 @@ class PicoPy(Settings):
                 return self.DIM_WINDOW
         finally:
             sdl2.SDL_QuitSubSystem(sdl2.SDL_INIT_VIDEO) # Desinicializa o subsistema
+
+    def is_quit_event(self, event) -> bool:
+        """Verifica se o evento é um evento de saída (fechar janela)."""
+        return event.type == self.EVENT_QUIT
+    
+    def is_key_event(self, event, key_scancode: int) -> bool:
+        """Verifica se o evento é um pressionamento de tecla DOWN para o scancode especificado."""
+        return event.type == self.EVENT_KEYDOWN and event.key.keysym.scancode == key_scancode
+    
+    def is_key_up_event(self, event, key_scancode: int) -> bool:
+        """Verifica se o evento é um evento de tecla UP para o scancode especificado."""
+        return event.type == self.EVENT_KEYUP and event.key.keysym.scancode == key_scancode
+    
+    def is_mouse_button_event(self, event, button: int) -> bool:
+        """Verifica se o evento é um evento de botão do mouse para o botão especificado."""
+        return event.type == self.EVENT_MOUSEBUTTONDOWN and event.button.button == button
+    
+    def is_mouse_button_up_event(self, event, button: int) -> bool:
+        """Verifica se o evento é um evento de botão do mouse UP para o botão especificado."""
+        return event.type == self.EVENT_MOUSEBUTTONUP and event.button.button == button
+    
+    def is_mouse_motion_event(self, event) -> bool:
+        """Verifica se o evento é um evento de movimento do mouse."""
+        return event.type == self.EVENT_MOUSEMOTION
