@@ -20,4 +20,9 @@ __pycache__/
 .idea/
 .DS_Store
 
+# Build e Distribuição
+build/
+dist/
 *.egg-info/
+__pycache__/
+*.py[cod]
