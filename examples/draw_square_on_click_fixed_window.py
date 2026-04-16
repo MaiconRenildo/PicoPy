@@ -1,10 +1,8 @@
 from picopy.pico import PicoPy
 
 pico = PicoPy()
-pixels_per_world_unit = 10
 window_width, window_height = 800, 600
-world_width = window_width // pixels_per_world_unit
-world_height = window_height // pixels_per_world_unit
+world_width, world_height = 80, 60
 pico.set_dim_window((window_width, window_height))
 pico.set_dim_world((world_width, world_height))
 pico.set_color(pico.COLOR_BLUE)
