@@ -1,4 +1,3 @@
-import sys
 import time
 import random
 
@@ -127,6 +126,8 @@ SHOT_COOLDOWN_MS = 200 # 200ms between shots
 PLAYER_WIDTH = 4
 PLAYER_HEIGHT = 4
 PLAYER_INITIAL_SPEED = 1
+PLAYER_START_Y_PCT = 90
+NO_VERTICAL_MOVEMENT = 0
 
 # bullet constants
 BULLET_WIDTH = 1
@@ -140,6 +141,9 @@ ENEMY_DESCENT_AMOUNT = 0.5
 GAME_OVER_FONT_SIZE = 10
 GAME_OVER_MESSAGE_DELAY_MS = 5000
 
+# direction constants
+DIRECTION_RIGHT = 1
+DIRECTION_LEFT = -1
 
 pico = PicoPy()
 pixels_per_world_unit = 10
@@ -151,10 +155,7 @@ pico.set_dim_world((world_width, world_height))
 pico.init(True, fullscreen=True)
 
 # Initialize player
-player_x, player_y = pico.pos(
-    (pico.POS_CENTER, pico.POS_BOTTOM),
-    offset=(0, -(PLAYER_HEIGHT * 2)) # negative offset to move up from the bottom
-)
+player_x, player_y = pico.pos((pico.POS_CENTER, PLAYER_START_Y_PCT))
 player = Player(player_x, player_y, PLAYER_WIDTH, PLAYER_HEIGHT, pico.COLOR_GREEN, PLAYER_INITIAL_SPEED)
 
 # Inicialize player bullets
@@ -164,7 +165,7 @@ last_shot_time = 0
 # Inicialize enemies e waves
 current_wave = 1
 enemies: list[Enemy] = create_enemies_wave(current_wave, world_width, world_height)
-enemy_direction = 1 # 1 for right, -1 for left
+enemy_direction = DIRECTION_RIGHT
 enemy_vertical_move_amount = ENEMY_DESCENT_AMOUNT
 
 running = True
@@ -183,9 +184,9 @@ while running and not game_over:
 
     # Player movement
     if pico.get_key(pico.SCANCODE_LEFT):
-        player.move(-1, 0, world_width, world_height)
+        player.move(DIRECTION_LEFT, NO_VERTICAL_MOVEMENT, world_width, world_height)
     if pico.get_key(pico.SCANCODE_RIGHT):
-        player.move(1, 0, world_width, world_height)
+        player.move(DIRECTION_RIGHT, NO_VERTICAL_MOVEMENT, world_width, world_height)
 
     # Shooting
     current_ticks = pico.get_ticks() # Time in milliseconds
@@ -206,11 +207,11 @@ while running and not game_over:
         max_enemy_x = max(e.x + e.w for e in active_enemies)
         max_enemy_y = max(e.y + e.h for e in active_enemies)
         current_enemy_speed = active_enemies[0].speed if active_enemies else 0
-        if enemy_direction == 1 and max_enemy_x >= world_width - int(current_enemy_speed):
-            enemy_direction = -1
+        if enemy_direction == DIRECTION_RIGHT and max_enemy_x >= world_width - int(current_enemy_speed):
+            enemy_direction = DIRECTION_LEFT
             for enemy in active_enemies: enemy.y += enemy_vertical_move_amount
-        elif enemy_direction == -1 and min_enemy_x <= current_enemy_speed:
-            enemy_direction = 1
+        elif enemy_direction == DIRECTION_LEFT and min_enemy_x <= current_enemy_speed:
+            enemy_direction = DIRECTION_RIGHT
             for enemy in active_enemies: enemy.y += enemy_vertical_move_amount
         for enemy in active_enemies:
             enemy.update(enemy_direction) # Using Enemy.update
@@ -230,7 +231,7 @@ while running and not game_over:
         # All enemies in wave destroyed, spawn next wave!
         current_wave += 1
         enemies = create_enemies_wave(current_wave, world_width, world_height)
-        enemy_direction = 1
+        enemy_direction = DIRECTION_RIGHT
         print(f"Starting Wave {current_wave}!")
 
     # Collision Detection (Player Bullet vs. Enemy)
