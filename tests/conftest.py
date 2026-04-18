@@ -11,3 +11,4 @@ def pico():
     pico.set_grid_world_unit(1)
     yield pico
     pico.init(False)
+    PicoPy.reset_instance()

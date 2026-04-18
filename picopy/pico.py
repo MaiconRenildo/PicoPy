@@ -11,7 +11,23 @@ from .settings import Settings
 from .tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 
 
-class PicoPy(Settings):
+class Singleton(type):
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+    def reset_instance(cls) -> None:
+        inst = Singleton._instances.get(cls)
+        if inst is None:
+            return
+        if getattr(inst, "REN", None) is not None:
+            inst.init(False)
+        del Singleton._instances[cls]
+
+
+class PicoPy(Settings, metaclass=Singleton):
     def __init__(self):
         self.state = PicoState()
         self.WIN = None  # Janela(objeto da janela do sistema operacional)
