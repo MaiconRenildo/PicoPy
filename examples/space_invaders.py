@@ -1,6 +1,4 @@
-import sys
 import time
-import sdl2
 import random
 
 from picopy.pico import PicoPy
@@ -21,7 +19,7 @@ class GameObject:
         """Returns the object's position and dimensions as a tuple (x, y, w, h)."""
         return (int(self.x), int(self.y), self.w, self.h)
 
-    def draw(self, pico: PicoPy):
+    def draw(self):
         """Draws the game object as a rectangle."""
         if self.active:
             pico.set_color(self.color)
@@ -52,7 +50,7 @@ class Player(GameObject):
         self.x = max(0, min(self.x, world_width - self.w))
         self.y = max(0, min(self.y, world_height - self.h))
 
-    def draw(self, pico: PicoPy):
+    def draw(self):
         """Draws the player as a triangular ship."""
         if self.active:
             pico.set_color(self.color)
@@ -91,7 +89,7 @@ class Enemy(GameObject):
 
 
 ###### Functions ######
-def create_enemies_wave(pico: PicoPy, wave_number: int, world_width: int, world_height: int) -> list[Enemy]:
+def create_enemies_wave(wave_number: int, world_width: int, world_height: int) -> list[Enemy]:
     # --- Enemy Wave Generation Constants (Local to function) ---
     BASE_ENEMY_COLS = 6
     MAX_ENEMY_COLS = 15
@@ -120,165 +118,163 @@ def create_enemies_wave(pico: PicoPy, wave_number: int, world_width: int, world_
     return enemies
 
 
-def main():
-    #### constants ####
-    FRAME_DELAY_MS = 16
-    SHOT_COOLDOWN_MS = 200 # 200ms between shots
+#### constants ####
+FRAME_DELAY_MS = 16
+SHOT_COOLDOWN_MS = 200 # 200ms between shots
+
+# player constants
+PLAYER_WIDTH = 4
+PLAYER_HEIGHT = 4
+PLAYER_INITIAL_SPEED = 1
+PLAYER_START_Y_PCT = 90
+NO_VERTICAL_MOVEMENT = 0
+
+# bullet constants
+BULLET_WIDTH = 1
+BULLET_HEIGHT = 2
+BULLET_SPEED = 1
+
+# enemy constants
+ENEMY_DESCENT_AMOUNT = 0.5
+
+# game over constants
+GAME_OVER_FONT_SIZE = 10
+GAME_OVER_MESSAGE_DELAY_MS = 5000
+
+# direction constants
+DIRECTION_RIGHT = 1
+DIRECTION_LEFT = -1
+
+pico = PicoPy()
+pixels_per_world_unit = 10
+window_width, window_height = pico.get_display_resolution()
+world_width = window_width // pixels_per_world_unit
+world_height = window_height // pixels_per_world_unit
+pico.set_dim_window((window_width, window_height))
+pico.set_dim_world((world_width, world_height))
+pico.init(True, fullscreen=True)
+
+# Initialize player
+player_x, player_y = pico.pos((pico.POS_CENTER, PLAYER_START_Y_PCT))
+player = Player(player_x, player_y, PLAYER_WIDTH, PLAYER_HEIGHT, pico.COLOR_GREEN, PLAYER_INITIAL_SPEED)
+
+# Inicialize player bullets
+player_bullets: list[Bullet] = []
+last_shot_time = 0
+
+# Inicialize enemies e waves
+current_wave = 1
+enemies: list[Enemy] = create_enemies_wave(current_wave, world_width, world_height)
+enemy_direction = DIRECTION_RIGHT
+enemy_vertical_move_amount = ENEMY_DESCENT_AMOUNT
+
+running = True
+game_over = False
+event = pico.new_event_object()
+random.seed(time.time())
+
+print("Control the ship with WASD. Shoot with SPACE. Destroy the enemies! If enemies hit you or reach the bottom, it's Game Over.")
+
+while running and not game_over:
     
-    # player constants
-    PLAYER_WIDTH = 4
-    PLAYER_HEIGHT = 4
-    PLAYER_INITIAL_SPEED = 1
+    # Close the game if the X of the window is clicked or if the ESC key is pressed
+    while pico.input_event_ask(event, pico.EVENT_ANY):
+        if pico.is_quit_event(event) or pico.is_key_event(event, pico.SCANCODE_ESCAPE):
+            running = False
 
-    # bullet constants
-    BULLET_WIDTH = 1
-    BULLET_HEIGHT = 2
-    BULLET_SPEED = 1
-    
-    # enemy constants
-    ENEMY_DESCENT_AMOUNT = 0.5
+    # Player movement
+    if pico.get_key(pico.SCANCODE_LEFT):
+        player.move(DIRECTION_LEFT, NO_VERTICAL_MOVEMENT, world_width, world_height)
+    if pico.get_key(pico.SCANCODE_RIGHT):
+        player.move(DIRECTION_RIGHT, NO_VERTICAL_MOVEMENT, world_width, world_height)
 
-    # game over constants
-    GAME_OVER_FONT_SIZE = 10
-    GAME_OVER_MESSAGE_DELAY_MS = 5000
+    # Shooting
+    current_ticks = pico.get_ticks() # Time in milliseconds
+    if pico.get_key(pico.SCANCODE_SPACE) and (current_ticks - last_shot_time > SHOT_COOLDOWN_MS):
+        new_bullet_y = player.y
+        new_bullet_x = player.x + (player.w - BULLET_WIDTH) // 2
+        new_bullet = Bullet(new_bullet_x, new_bullet_y, BULLET_WIDTH, BULLET_HEIGHT, pico.COLOR_YELLOW, BULLET_SPEED)
+        player_bullets.append(new_bullet)
+        last_shot_time = current_ticks
+    for bullet in player_bullets:
+        bullet.update() # move the bullet upwards
+    player_bullets = [b for b in player_bullets if b.active]
 
+    # --- Enemy Update (Horizontal Movement) ---
+    active_enemies = [e for e in enemies if e.active]
+    if active_enemies:
+        min_enemy_x = min(e.x for e in active_enemies)
+        max_enemy_x = max(e.x + e.w for e in active_enemies)
+        max_enemy_y = max(e.y + e.h for e in active_enemies)
+        current_enemy_speed = active_enemies[0].speed if active_enemies else 0
+        if enemy_direction == DIRECTION_RIGHT and max_enemy_x >= world_width - int(current_enemy_speed):
+            enemy_direction = DIRECTION_LEFT
+            for enemy in active_enemies: enemy.y += enemy_vertical_move_amount
+        elif enemy_direction == DIRECTION_LEFT and min_enemy_x <= current_enemy_speed:
+            enemy_direction = DIRECTION_RIGHT
+            for enemy in active_enemies: enemy.y += enemy_vertical_move_amount
+        for enemy in active_enemies:
+            enemy.update(enemy_direction) # Using Enemy.update
 
-    pico = PicoPy()
-    pixels_per_world_unit = 10
-    window_width, window_height = pico.get_display_resolution()
-    world_width = window_width // pixels_per_world_unit
-    world_height = window_height // pixels_per_world_unit
-    pico.set_dim_window((window_width, window_height))
-    pico.set_dim_world((world_width, world_height))
-    pico.init(True, fullscreen=True)
-
-    # Initialize player
-    player_x, player_y = pico.pos(
-        (pico.POS_CENTER, pico.POS_BOTTOM),
-        offset=(0, -(PLAYER_HEIGHT * 2)) # negative offset to move up from the bottom
-    )
-    player = Player(player_x, player_y, PLAYER_WIDTH, PLAYER_HEIGHT, pico.COLOR_GREEN, PLAYER_INITIAL_SPEED)
-
-    # Inicialize player bullets
-    player_bullets: list[Bullet] = []
-    last_shot_time = 0
-
-    # Inicialize enemies e waves
-    current_wave = 1
-    enemies: list[Enemy] = create_enemies_wave(pico, current_wave, world_width, world_height)
-    enemy_direction = 1 # 1 for right, -1 for left
-    enemy_vertical_move_amount = ENEMY_DESCENT_AMOUNT
-
-    running = True
-    game_over = False
-    event = pico.new_event_object()
-    random.seed(time.time())
-
-    print("Control the ship with WASD. Shoot with SPACE. Destroy the enemies! If enemies hit you or reach the bottom, it's Game Over.")
-
-    while running and not game_over:
-        
-        # Close the game if the X of the window is clicked or if the ESC key is pressed
-        while pico.input_event_ask(event, pico.EVENT_ANY):
-            if pico.is_quit_event(event) or pico.is_key_event(event, pico.SCANCODE_ESCAPE):
-                running = False
-
-        # Player movement
-        if pico.get_key(pico.SCANCODE_LEFT):
-            player.move(-1, 0, world_width, world_height)
-        if pico.get_key(pico.SCANCODE_RIGHT):
-            player.move(1, 0, world_width, world_height)
-
-        # Shooting
-        current_ticks = pico.get_ticks() # Time in milliseconds
-        if pico.get_key(pico.SCANCODE_SPACE) and (current_ticks - last_shot_time > SHOT_COOLDOWN_MS):
-            new_bullet_y = player.y
-            new_bullet_x = player.x + (player.w - BULLET_WIDTH) // 2
-            new_bullet = Bullet(new_bullet_x, new_bullet_y, BULLET_WIDTH, BULLET_HEIGHT, pico.COLOR_YELLOW, BULLET_SPEED)
-            player_bullets.append(new_bullet)
-            last_shot_time = current_ticks
-        for bullet in player_bullets:
-            bullet.update() # move the bullet upwards
-        player_bullets = [b for b in player_bullets if b.active]
-
-        # --- Enemy Update (Horizontal Movement) ---
-        active_enemies = [e for e in enemies if e.active]
-        if active_enemies:
-            min_enemy_x = min(e.x for e in active_enemies)
-            max_enemy_x = max(e.x + e.w for e in active_enemies)
-            max_enemy_y = max(e.y + e.h for e in active_enemies)
-            current_enemy_speed = active_enemies[0].speed if active_enemies else 0
-            if enemy_direction == 1 and max_enemy_x >= world_width - int(current_enemy_speed):
-                enemy_direction = -1
-                for enemy in active_enemies: enemy.y += enemy_vertical_move_amount
-            elif enemy_direction == -1 and min_enemy_x <= current_enemy_speed:
-                enemy_direction = 1
-                for enemy in active_enemies: enemy.y += enemy_vertical_move_amount
+        # Game Over Logic: Enemies hitting player or bottom
+        if max_enemy_y >= player.y:
             for enemy in active_enemies:
-                enemy.update(enemy_direction) # Using Enemy.update
-
-            # Game Over Logic: Enemies hitting player or bottom
-            if max_enemy_y >= player.y:
-                for enemy in active_enemies:
-                    if player.is_colliding_with(enemy): # Using Player.is_colliding_with
-                        game_over = True
-                        print("GAME OVER: Enemy collided with player!")
-                        break
-                if not game_over and max_enemy_y >= world_height - 1:
+                if player.is_colliding_with(enemy): # Using Player.is_colliding_with
                     game_over = True
-                    print("GAME OVER: Enemies reached the bottom of the screen!")
-
-        else:
-            # All enemies in wave destroyed, spawn next wave!
-            current_wave += 1
-            enemies = create_enemies_wave(pico, current_wave, world_width, world_height)
-            enemy_direction = 1
-            print(f"Starting Wave {current_wave}!")
-
-        # Collision Detection (Player Bullet vs. Enemy)
-        for bullet in player_bullets:
-            if not bullet.active:
-                continue
-            for enemy in enemies:
-                if not enemy.active: 
-                    continue
-                if bullet.is_colliding_with(enemy):
-                    bullet.active = False
-                    enemy.active = False
+                    print("GAME OVER: Enemy collided with player!")
                     break
+            if not game_over and max_enemy_y >= world_height - 1:
+                game_over = True
+                print("GAME OVER: Enemies reached the bottom of the screen!")
 
-        # --- Drawing All Elements ---
+    else:
+        # All enemies in wave destroyed, spawn next wave!
+        current_wave += 1
+        enemies = create_enemies_wave(current_wave, world_width, world_height)
+        enemy_direction = DIRECTION_RIGHT
+        print(f"Starting Wave {current_wave}!")
+
+    # Collision Detection (Player Bullet vs. Enemy)
+    for bullet in player_bullets:
+        if not bullet.active:
+            continue
+        for enemy in enemies:
+            if not enemy.active: 
+                continue
+            if bullet.is_colliding_with(enemy):
+                bullet.active = False
+                enemy.active = False
+                break
+
+    # --- Drawing All Elements ---
+    pico.output_clear()
+    pico.set_style(pico.DRAW_FILL)
+
+    if not game_over:
+        # Draw enemies
+        for enemy in enemies:
+            enemy.draw()
+        # Draw player bullets
+        for bullet in player_bullets:
+            bullet.draw() # Using Bullet.draw
+        # Draw player
+        player.draw() # Using Player.draw
+        pico.output_present()
+    else:
         pico.output_clear()
-        pico.set_style(pico.DRAW_FILL)
+        pico.set_color(pico.COLOR_WHITE) # Using Colors class
+        pico.set_font(None, GAME_OVER_FONT_SIZE) # Assuming font size 10 is appropriate for GAME OVER text
+        text_pos_x, text_pos_y = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
+        # Set anchor for text drawing (important for centering)
+        pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
+        pico.set_anchor_rotate((pico.POS_CENTER, pico.POS_MIDDLE))
+        pico.set_angle(0)
+        pico.output_draw_text((text_pos_x, text_pos_y), "GAME OVER!")
+        pico.output_present()
+        pico.input_delay(GAME_OVER_MESSAGE_DELAY_MS) # Keep game over message on screen for 5 seconds
 
-        if not game_over:
-            # Draw enemies
-            for enemy in enemies:
-                enemy.draw(pico)
-            # Draw player bullets
-            for bullet in player_bullets:
-                bullet.draw(pico) # Using Bullet.draw
-            # Draw player
-            player.draw(pico) # Using Player.draw
-            pico.output_present()
-        else:
-            pico.output_clear()
-            pico.set_color(pico.COLOR_WHITE) # Using Colors class
-            pico.set_font(None, GAME_OVER_FONT_SIZE) # Assuming font size 10 is appropriate for GAME OVER text
-            text_pos_x, text_pos_y = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
-            # Set anchor for text drawing (important for centering)
-            pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
-            pico.set_anchor_rotate((pico.POS_CENTER, pico.POS_MIDDLE))
-            pico.set_angle(0)
-            pico.output_draw_text((text_pos_x, text_pos_y), "GAME OVER!")
-            pico.output_present()
-            pico.input_delay(GAME_OVER_MESSAGE_DELAY_MS) # Keep game over message on screen for 5 seconds
+    pico.input_delay(FRAME_DELAY_MS)
 
-        pico.input_delay(FRAME_DELAY_MS)
-
-    # --- Finalization ---
-    pico.init(False)
-    print("Space Invaders game shut down.")
-
-if __name__ == "__main__":
-    sys.exit(main())
+# --- Finalization ---
+pico.init(False)
+print("Space Invaders game shut down.")
