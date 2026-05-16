@@ -6,6 +6,8 @@ Para configurar o ambiente do PicoPy, siga estes passos:
 
 ### 1. Instalar bibliotecas SDL2 no sistema
 
+O PicoPy depende das bibliotecas SDL2. O pacote pysdl2-dll (incluído nas dependências) cuida automaticamente da configuração dos binários SDL2 para Windows e macOS. No entanto, no Linux, a instalação manual das bibliotecas ainda é necessária.
+
 **Linux (Ubuntu/Debian):**
 ```bash
 sudo apt-get update
@@ -13,7 +15,8 @@ sudo apt-get install -y libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-
 ```
 
 **Windows:**
-Baixe os binários do SDL2 de [https://www.libsdl.org/download-2.0.php](https://www.libsdl.org/download-2.0.php) e configure as variáveis de ambiente.
+
+O pysdl2-dll gerencia os binários automaticamente. Caso opte pela instalação manual, baixe os binários do SDL2 de [https://www.libsdl.org/download-2.0.php](https://www.libsdl.org/download-2.0.php) e configure as variáveis de ambiente.
 
 ### 2. Configurar o ambiente Python
 

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "PicoPy"
+version = "0.1.0"
+description = "A minimalist 2D game engine in Python."
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  {name = "Maicon Renildo"},
+]
+urls = {Homepage = "https://github.com/MaiconRenildo/PicoPy"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pysdl2",
+    "pysdl2-dll",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools]
+packages = {find = {}}

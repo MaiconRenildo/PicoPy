@@ -1,2 +1,0 @@
-pysdl2
-pytest
