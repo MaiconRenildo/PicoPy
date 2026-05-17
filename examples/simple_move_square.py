@@ -3,14 +3,6 @@ from picopy.pico import PicoPy
 pico = PicoPy()
 pico.init(True)
 
-pixels_per_world_unit = 10
-window_dim = pico.get_dim_window()
-window_width, window_height = window_dim[0], window_dim[1]
-world_width = window_width // pixels_per_world_unit
-world_height = window_height // pixels_per_world_unit
-
-pico.set_size((window_width, window_height), (world_width, world_height))
-
 square_size = 10
 player_speed = 5
 frame_delay_ms = 16
