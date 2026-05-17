@@ -352,6 +352,16 @@ class PicoPy(Settings, metaclass=Singleton):
                     self.set_grid(not self.state.grid)
                     return 0
 
+        elif e.type == sdl2.SDL_WINDOWEVENT:
+            if e.window.event == sdl2.SDL_WINDOWEVENT_SIZE_CHANGED:
+                # Update the window dimensions in the state. The set_size function will handle
+                # the logical world and texture updates.
+                self.set_size(
+                    (e.window.data1, e.window.data2), # New physical window dimensions
+                    self.state.dim_world # Keep logical world dimensions, they will be scaled
+                )
+            return 0 # Evento tratado internamente, não repassa
+
         # Verifica se o tipo de evento corresponde ao esperado
         if xp == e.type:
             pass
