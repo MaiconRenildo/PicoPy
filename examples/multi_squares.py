@@ -1,7 +1,5 @@
-import sys
-
+import random
 from picopy.pico import PicoPy
-
 
 pico = PicoPy()
 pico.init(True)
@@ -22,12 +20,10 @@ event = pico.new_event_object()
 print("Multiplos quadrados azuis serao desenhados. Feche a janela para sair.")
 
 while running:
-    # Processa eventos de forma nao bloqueante
     while pico.input_event_ask(event, pico.EVENT_ANY):
         if pico.is_quit_event(event):
             running = False
             print("Evento QUIT detectado. Fechando...")
-        # Outros eventos, como cliques do mouse, sao ignorados neste exemplo.
 
     # Logica de desenho
     pico.output_clear()
@@ -61,6 +57,12 @@ while running:
     
     # Restaura a âncora global original
     pico.set_anchor_pos(original_anchor)
+    world_width, world_height = pico.get_dim_world()
+
+    for i in range(10):
+        rand_x = random.randint(0, world_width - 1)
+        rand_y = random.randint(0, world_height - 1)
+        pico.output_draw_rect((rand_x, rand_y, square_size, square_size))
 
     pico.output_present()
     pico.input_delay(frame_delay_ms)
