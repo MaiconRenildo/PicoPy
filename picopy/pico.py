@@ -10,7 +10,6 @@ from .state import PicoState
 from .settings import Settings
 from .tiny_ttf import pico_tiny_ttf, pico_tiny_ttf_len
 
-
 class Singleton(type):
     _instances = {}
     def __call__(cls, *args, **kwargs):
@@ -81,6 +80,20 @@ class PicoPy(Settings, metaclass=Singleton):
         """Direciona o desenho de volta para a TEX"""
         zoom_dim = self._zoom()
         self._define_target(self.TEX, zoom_dim[0], zoom_dim[1])
+
+    def _set_logical_size_for_aux(self, w, h):
+        sdl2.SDL_RenderSetLogicalSize(self.REN, w, h)
+
+    def _set_render_target_tex_after_aux(self):
+        zoom_dim = self._zoom()
+        sdl2.SDL_RenderSetLogicalSize(self.REN, zoom_dim[0], zoom_dim[1])
+        sdl2.SDL_SetRenderTarget(self.REN, self.TEX)
+
+    def _pico_output_clear(self):
+        """Equiv. _pico_output_clear em a.c."""
+        self._set_color(self.state.color_clear)
+        self._clear_target_with_defined_color()
+        self._restore_draw_color()
 
     def _restore_render_state(self, clip, target):
         """Restaura o estado do renderer"""
@@ -196,7 +209,7 @@ class PicoPy(Settings, metaclass=Singleton):
             rot_center,
             flip
         )
-        # self._output_present(0)
+        self._output_present(0)
 
     def _copy_TEX_to_window(self):
         """Copia a textura principal do mundo(TEX) para a janela(BackBuffer)"""
@@ -223,67 +236,44 @@ class PicoPy(Settings, metaclass=Singleton):
         return sdl2.SDL_Rect(x, y, w, h)
 
     def _show_grid(self):
-        """
-        Mostra a grade se estiver habilitada, seguindo o padrão SDL do professor.
-        Garante que a grade tenha sempre 1 pixel de espessura na tela física.
-        """
+        """Mostra a grade (equiv. show_grid em a.c)."""
         if not self.state.grid:
             return
 
-        # Define a cor do grid
-        self._set_color(self.COLOR_SEMI_TRANSPARENT_GRAY)
-
-        # Dimensões físicas da janela (ex: 160x160)
-        phy_w = int(self.state.dim_window[0])
-        phy_h = int(self.state.dim_window[1])
-
-        # Dimensões lógicas do mundo (ex: 16x16)
-        cur_w = int(self.state.dim_world[0])
-        cur_h = int(self.state.dim_world[1])
-
-        # 1. Muda temporariamente o Render para o tamanho físico da janela
+        self._set_color((0x77, 0x77, 0x77, 0x77))
+        if self.WIN:
+            w, h = ctypes.c_int(), ctypes.c_int()
+            sdl2.SDL_GetWindowSize(self.WIN, ctypes.byref(w), ctypes.byref(h))
+            phy_w, phy_h = w.value, h.value
+        else:
+            phy_w = int(self.state.dim_window[0])
+            phy_h = int(self.state.dim_window[1])
+        cur_w, cur_h = self._zoom()
         sdl2.SDL_RenderSetLogicalSize(self.REN, phy_w, phy_h)
-
-        # 2. Calcula de quantos em quantos pixels na tela física a linha deve ser traçada
-        # (Prevenindo divisão por zero caso dim_world não esteja inicializado)
         step_x = phy_w // cur_w if cur_w > 0 else 1
         step_y = phy_h // cur_h if cur_h > 0 else 1
-
-        # 3. Desenha as linhas verticais
         for i in range(0, phy_w + 1, step_x):
             sdl2.SDL_RenderDrawLine(self.REN, i, 0, i, phy_h)
-
-        # 4. Desenha as linhas horizontais
         for j in range(0, phy_h + 1, step_y):
             sdl2.SDL_RenderDrawLine(self.REN, 0, j, phy_w, j)
-
-        # 5. Restaura o tamanho lógico para não quebrar o resto do jogo
         sdl2.SDL_RenderSetLogicalSize(self.REN, cur_w, cur_h)
-
-        # Restaura a cor de desenho original
         self._restore_draw_color()
-
 
     def _output_present(self, force):
-        """Apresenta o conteúdo renderizado da textura TEX para a tela"""
+        """Apresenta o conteúdo renderizado da textura TEX para a tela (equiv. _pico_output_present)."""
         if self.state.expert and not force:
             return
-        
-        # Salva
-        clip = self._get_current_clip()
 
-        # Apresenta
-        self._change_target_to_window()
-        # self._set_color(COLOR_GRAY)
-        # self._clear_target_with_defined_color()
-        self._copy_TEX_to_window() # Seta o conteúdo no BackBuffer da janela
-        self._show_grid() # Desenha a grade POR CIMA(no BackBuffer da janela)
+        cur_w, cur_h = self._zoom()
+        sdl2.SDL_SetRenderTarget(self.REN, None)
+        sdl2.SDL_RenderSetLogicalSize(self.REN, cur_w, cur_h)
+        self._set_color((0x77, 0x77, 0x77, 0x77))
+        self._clear_target_with_defined_color()
+        self._copy_TEX_to_window()
+        self._show_grid()
         self._show_on_screen()
-        
-        # Restaura
         self._restore_draw_color()
-        self._change_target_to_TEX()
-        self._define_clip(clip)
+        sdl2.SDL_SetRenderTarget(self.REN, self.TEX)
 
     # Funções auxiliares para cálculo de posição
     def _hanchor(self, x, w):
@@ -340,16 +330,20 @@ class PicoPy(Settings, metaclass=Singleton):
                     self.set_zoom((self.state.zoom[0] + 10, self.state.zoom[1] + 10))
                     return 0
                 elif e.key.keysym.sym == self.KEY_LEFT: # Scroll para a esquerda (Ctrl + Left)
-                    self.set_scroll((self.state.scroll[0] - max(1, self.state.dim_world[0] // 20), self.state.scroll[1]))
+                    cur = self._zoom()
+                    self.set_scroll((self.state.scroll[0] - max(1, cur[0] // 20), self.state.scroll[1]))
                     return 0
                 elif e.key.keysym.sym == self.KEY_RIGHT: # Scroll para a direita (Ctrl + Right)
-                    self.set_scroll((self.state.scroll[0] + max(1, self.state.dim_world[0] // 20), self.state.scroll[1]))
+                    cur = self._zoom()
+                    self.set_scroll((self.state.scroll[0] + max(1, cur[0] // 20), self.state.scroll[1]))
                     return 0
                 elif e.key.keysym.sym == self.KEY_UP: # Scroll para cima (Ctrl + Up)
-                    self.set_scroll((self.state.scroll[0], self.state.scroll[1] - max(1, self.state.dim_world[1] // 20)))
+                    cur = self._zoom()
+                    self.set_scroll((self.state.scroll[0], self.state.scroll[1] - max(1, cur[1] // 20)))
                     return 0
                 elif e.key.keysym.sym == self.KEY_DOWN: # Scroll para baixo (Ctrl + Down)
-                    self.set_scroll((self.state.scroll[0], self.state.scroll[1] + max(1, self.state.dim_world[1] // 20)))
+                    cur = self._zoom()
+                    self.set_scroll((self.state.scroll[0], self.state.scroll[1] + max(1, cur[1] // 20)))
                     return 0
                 elif e.key.keysym.sym == self.KEY_s: # Tira um screenshot (Ctrl + s)
                     self.output_screenshot(None)
@@ -432,7 +426,7 @@ class PicoPy(Settings, metaclass=Singleton):
             self.REN = sdl2.SDL_CreateRenderer(
                 self.WIN,
                 -1, # Índice do driver de renderização -> -1 para usar o primeiro driver disponível
-                sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_PRESENTVSYNC  # Usar aceleração de hardware(GPU) quando disponível
+                sdl2.SDL_RENDERER_ACCELERATED  # Como a.c; sem PRESENTVSYNC (vários present/frame ficam menos visíveis)
             )
             self._assert(self.REN is not None)
             
@@ -450,9 +444,9 @@ class PicoPy(Settings, metaclass=Singleton):
                 1024  # Tamanho do buffer: quantas amostras processadas por vez
             )
             
-            # Configurar zoom
-            self.set_zoom(self.state.zoom) # Aqui a textura TEX é definida como target
-            
+            # Equiv. pico_set_size(PICO_DIM_PHY, PICO_DIM_LOG) em a.c
+            self.set_size(self.state.dim_window, self.state.dim_world)
+
             # Carregar fonte embutida(tiny_ttf)
             self.set_font(None, 0)
 
@@ -501,16 +495,10 @@ class PicoPy(Settings, metaclass=Singleton):
             assert False, "SDL ERROR"
 
     def output_clear(self):
-        """Limpa o target atual com a cor de limpeza"""
+        """Limpa o target atual com a cor de limpeza (equiv. pico_output_clear)."""
         if self.REN:
-            self._set_color(self.state.color_clear)
-            if self._noclip():
-                self._clear_target_with_defined_color() # Limpa o target inteiro
-            else:
-                clip = self._get_current_clip()
-                sdl2.SDL_RenderFillRect(self.REN, clip) # Preenche a região do clip com a cor de limpeza
-            self._restore_draw_color()
-            # self._output_present(0)
+            self._pico_output_clear()
+            self._output_present(0)
 
     def output_present(self):
         """Apresenta o conteúdo renderizado na tela"""
@@ -518,36 +506,78 @@ class PicoPy(Settings, metaclass=Singleton):
             self._output_present(1)
 
     def set_zoom(self, pct):
-        """Define o zoom"""
-        old = self._zoom()
+        """Define o zoom (equiv. pico_set_zoom em a.c)."""
+        old_cur = self._zoom()
+        org = self.state.dim_world
         self.state.zoom = pct
-        new = self._zoom()
-        
-        dx = new[0] - old[0]
-        dy = new[1] - old[1]
-        
-        # Ajusta scroll baseado no anchor
         self.state.scroll = (
-            self.state.scroll[0] - (dx * self.state.anchor_pos[0] // 100),
-            self.state.scroll[1] - (dy * self.state.anchor_pos[1] // 100)
+            self.state.scroll[0] - (org[0] - old_cur[0]) // 2,
+            self.state.scroll[1] - (org[1] - old_cur[1]) // 2,
+        )
+        zx = max(1, pct[0])
+        zy = max(1, pct[1])
+        log = (org[0] * 100 // zx, org[1] * 100 // zy)
+        self._pico_set_size(self.DIM_KEEP, log)
+        new_cur = self._zoom()
+        self.state.scroll = (
+            self.state.scroll[0] + (org[0] - new_cur[0]) // 2,
+            self.state.scroll[1] + (org[1] - new_cur[1]) // 2,
         )
 
-        if self.TEX:
-            sdl2.SDL_DestroyTexture(self.TEX)
-        
-        # Criar nova textura
-        self.TEX = self._create_texture(new[0], new[1])
-        self._assert(self.TEX is not None)
-        
-        self._define_target(self.TEX, new[0], new[1])
-        
-        # Define clip
-        clip = sdl2.SDL_Rect(0, 0, new[0], new[1])
-        self._define_clip(clip)
+    def _pico_set_size(self, phy, log):
+        """Equiv. _pico_set_size em a.c."""
+        if phy != self.DIM_KEEP:
+            if self.state.fullscreen:
+                self._assert(
+                    sdl2.SDL_SetWindowFullscreen(
+                        self.WIN, sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP
+                    )
+                    == 0
+                )
+                w, h = ctypes.c_int(), ctypes.c_int()
+                sdl2.SDL_GetWindowSize(self.WIN, ctypes.byref(w), ctypes.byref(h))
+                phy = (w.value, h.value)
+            else:
+                self._assert(sdl2.SDL_SetWindowFullscreen(self.WIN, 0) == 0)
+                self.state.dim_window = phy
+                sdl2.SDL_SetWindowSize(self.WIN, phy[0], phy[1])
+
+        if log != self.DIM_KEEP:
+            if self.TEX:
+                sdl2.SDL_DestroyTexture(self.TEX)
+            self.TEX = self._create_texture(log[0], log[1])
+            self._assert(self.TEX is not None)
+            sdl2.SDL_RenderSetLogicalSize(self.REN, log[0], log[1])
+            sdl2.SDL_SetRenderTarget(self.REN, self.TEX)
+            clip = sdl2.SDL_Rect(0, 0, log[0], log[1])
+            self._define_clip(clip)
+
+        if self.WIN:
+            w, h = ctypes.c_int(), ctypes.c_int()
+            sdl2.SDL_GetWindowSize(self.WIN, ctypes.byref(w), ctypes.byref(h))
+            phy_size = (w.value, h.value)
+        else:
+            phy_size = self.state.dim_window
+        cur = self._zoom()
+        if phy_size[0] == cur[0] or phy_size[1] == cur[1]:
+            self.state.grid = False
+
+        self._output_present(0)
+
+    def set_size(self, phy, log):
+        """Define tamanho físico e lógico (equiv. pico_set_size)."""
+        self.state.dim_world = log
+        self._pico_set_size(phy, log)
 
     def get_dim_window(self):
         """Obtém as dimensões da janela."""
-        return self.state.dim_window
+        if self.WIN:
+            w, h = ctypes.c_int(), ctypes.c_int()
+            sdl2.SDL_GetWindowSize(self.WIN, ctypes.byref(w), ctypes.byref(h))
+            phy = (w.value, h.value)
+        else:
+            phy = self.state.dim_window
+        return phy
 
     def set_dim_window(self, dim):
         """Define as dimensões da janela.
@@ -705,64 +735,80 @@ class PicoPy(Settings, metaclass=Singleton):
         if not self.REN:
             return
 
-        # salva estado atual para restauração posterior
-        clip = self._get_current_clip()
-        target = self._get_current_target()
-
-        # bounding box da linha
+        # bounding box da linha (equivalente pico_output_draw_line em a.c)
         min_x = min(p1[0], p2[0])
         max_x = max(p1[0], p2[0])
         min_y = min(p1[1], p2[1])
         max_y = max(p1[1], p2[1])
         w = max_x - min_x + 1
         h = max_y - min_y + 1
-        
-        # calcula a posição ancorada
+
         pos = (self._hanchor(min_x, 1), self._vanchor(min_y, 1))
 
-        aux = self._setup_aux_texture(w, h)
-        
-        # O desenho dentro da aux é relativo à 'pos' para compensar a anchor
-        sdl2.SDL_RenderDrawLine(self.REN, p1[0] - pos[0], p1[1] - pos[1], p2[0] - pos[0], p2[1] - pos[1])
-        
-        self._restore_render_state(clip, target)
+        aux = self._create_texture(w, h)
+        self._assert(aux is not None)
+        sdl2.SDL_SetTextureBlendMode(aux, sdl2.SDL_BLENDMODE_BLEND)
+        self._set_logical_size_for_aux(w, h)
+        sdl2.SDL_SetRenderTarget(self.REN, aux)
 
+        clr = self.state.color_clear
+        self.state.color_clear = (0, 0, 0, 0)
+        self._set_color(self.state.color_clear)
+        self._clear_target_with_defined_color()
+        self._restore_draw_color()
+        self.state.color_clear = clr
+
+        sdl2.SDL_RenderDrawLine(
+            self.REN,
+            p1[0] - pos[0], p1[1] - pos[1],
+            p2[0] - pos[0], p2[1] - pos[1],
+        )
+
+        self._set_render_target_tex_after_aux()
         current_anchor = self.state.anchor_pos
-        self.state.anchor_pos = (self.POS_LEFT, self.POS_TOP) # reset da anchor para TOP-LEFT
-        self._output_draw_tex(pos, aux, self.DIM_KEEP) # também aplica a anchor e o scroll, por isso vale o reset da anchor
-        # para evitar confusão, resetamos a anchor original
-        
-        self.state.anchor_pos = current_anchor # restaura a anchor original
-        sdl2.SDL_DestroyTexture(aux) # destroi a textura auxiliar
+        self.state.anchor_pos = (self.POS_LEFT, self.POS_TOP)
+        self._output_draw_tex(pos, aux, self.DIM_KEEP)
+        self.state.anchor_pos = current_anchor
+        sdl2.SDL_DestroyTexture(aux)
 
     def output_draw_rect(self, rect):
-        """Desenha um retângulo.
-
-        Args:
-            rect: (x, y, w, h) representando o retângulo.
-        """
+        """Mesmo fluxo que pico_output_draw_rect no C (textura aux + output_clear transparente + TEX + draw_tex)."""
         if not self.REN:
             return
 
-        pos = (rect[0], rect[1])
-        clip = self._get_current_clip()
-        target = self._get_current_target() # Salva o target atual também
+        x, y, w, h = rect[0], rect[1], rect[2], rect[3]
+        pos = (x, y)
 
-        aux = self._setup_aux_texture(rect[2], rect[3]) # w, h
-        
-        # Redefine rect para ser relativo à textura auxiliar (0, 0)
-        draw_rect = sdl2.SDL_Rect(0, 0, rect[2], rect[3])
-        
-        # A cor já é definida em _setup_aux_texture, então não precisamos setar aqui novamente.
-        # Apenas certifica que o estilo de desenho está correto no target auxiliar.
+        aux = sdl2.SDL_CreateTexture(
+            self.REN,
+            sdl2.SDL_PIXELFORMAT_RGBA32,
+            sdl2.SDL_TEXTUREACCESS_TARGET,
+            w,
+            h,
+        )
+        self._assert(aux is not None)
+
+        sdl2.SDL_SetTextureBlendMode(aux, sdl2.SDL_BLENDMODE_BLEND)
+        self._set_logical_size_for_aux(w, h)
+        sdl2.SDL_SetRenderTarget(self.REN, aux)
+
+        clr = self.state.color_clear
+        self.state.color_clear = (0, 0, 0, 0)
+        self._set_color(self.state.color_clear)
+        self._clear_target_with_defined_color()
+        self._restore_draw_color()
+        self.state.color_clear = clr
+
+        draw_rect = sdl2.SDL_Rect(0, 0, w, h)
         if self.state.style == self.DRAW_FILL:
             sdl2.SDL_RenderFillRect(self.REN, draw_rect)
         elif self.state.style == self.DRAW_STROKE:
             sdl2.SDL_RenderDrawRect(self.REN, draw_rect)
-        
-        self._restore_render_state(clip, target) # Restaura o target e o clip originais
+
+        self._set_render_target_tex_after_aux()
         self._output_draw_tex(pos, aux, self.DIM_KEEP)
         sdl2.SDL_DestroyTexture(aux)
+
 
     def output_draw_tri(self, rect):
         """Desenha um triângulo com um ângulo reto no canto inferior esquerdo.
@@ -774,15 +820,19 @@ class PicoPy(Settings, metaclass=Singleton):
             return
 
         pos = (rect[0], rect[1])
-        clip = self._get_current_clip()
-        target = self._get_current_target()
+        aux = self._create_texture(rect[2], rect[3])
+        self._assert(aux is not None)
+        sdl2.SDL_SetTextureBlendMode(aux, sdl2.SDL_BLENDMODE_BLEND)
+        self._set_logical_size_for_aux(rect[2], rect[3])
+        sdl2.SDL_SetRenderTarget(self.REN, aux)
 
-        aux = self._setup_aux_texture(rect[2], rect[3]) # w, h
-        
-        # Coordenadas do triângulo relativas à textura auxiliar
-        # Canto superior esquerdo: (0, 0)
-        # Canto inferior esquerdo: (0, rect.h - 1)
-        # Canto inferior direito: (rect.w - 1, rect.h - 1)
+        clr = self.state.color_clear
+        self.state.color_clear = (0, 0, 0, 0)
+        self._set_color(self.state.color_clear)
+        self._clear_target_with_defined_color()
+        self._restore_draw_color()
+        self.state.color_clear = clr
+
         x1, y1 = 0, 0
         x2, y2 = 0, rect[3] - 1
         x3, y3 = rect[2] - 1, rect[3] - 1
@@ -794,8 +844,8 @@ class PicoPy(Settings, metaclass=Singleton):
             sdlgfx.filledTrigonRGBA(self.REN, x1, y1, x2, y2, x3, y3, r, g, b, a)
         elif self.state.style == self.DRAW_STROKE:
             sdlgfx.trigonRGBA(self.REN, x1, y1, x2, y2, x3, y3, r, g, b, a)
-        
-        self._restore_render_state(clip, target)
+
+        self._set_render_target_tex_after_aux()
         self._output_draw_tex(pos, aux, self.DIM_KEEP)
         sdl2.SDL_DestroyTexture(aux)
 
@@ -809,12 +859,19 @@ class PicoPy(Settings, metaclass=Singleton):
             return
 
         pos = (rect[0], rect[1])
-        clip = self._get_current_clip()
-        target = self._get_current_target()
+        aux = self._create_texture(rect[2], rect[3])
+        self._assert(aux is not None)
+        sdl2.SDL_SetTextureBlendMode(aux, sdl2.SDL_BLENDMODE_BLEND)
+        self._set_logical_size_for_aux(rect[2], rect[3])
+        sdl2.SDL_SetRenderTarget(self.REN, aux)
 
-        aux = self._setup_aux_texture(rect[2], rect[3]) # w, h
-        
-        # Coordenadas do centro e raios para a elipse, relativas à textura auxiliar
+        clr = self.state.color_clear
+        self.state.color_clear = (0, 0, 0, 0)
+        self._set_color(self.state.color_clear)
+        self._clear_target_with_defined_color()
+        self._restore_draw_color()
+        self.state.color_clear = clr
+
         center_x, center_y = rect[2] // 2, rect[3] // 2
         radius_x, radius_y = rect[2] // 2, rect[3] // 2
 
@@ -825,8 +882,8 @@ class PicoPy(Settings, metaclass=Singleton):
             sdlgfx.filledEllipseRGBA(self.REN, center_x, center_y, radius_x, radius_y, r, g, b, a)
         elif self.state.style == self.DRAW_STROKE:
             sdlgfx.ellipseRGBA(self.REN, center_x, center_y, radius_x, radius_y, r, g, b, a)
-        
-        self._restore_render_state(clip, target)
+
+        self._set_render_target_tex_after_aux()
         self._output_draw_tex(pos, aux, self.DIM_KEEP)
         sdl2.SDL_DestroyTexture(aux)
 
@@ -905,19 +962,23 @@ class PicoPy(Settings, metaclass=Singleton):
         ax_c = (ctypes.c_short * count)(*ax)
         ay_c = (ctypes.c_short * count)(*ay)
 
-        # Calcular a posição (x,y) da textura auxiliar com anchor aplicado
         pos = (self._hanchor(min_x, 1), self._vanchor(min_y, 1))
 
-        # Salvar estado atual do renderizador
-        clip = self._get_current_clip()
-        target = self._get_current_target()
-
-        # Criar textura auxiliar
         aux_w = maxx - min_x + 1
         aux_h = maxy - min_y + 1
-        aux = self._setup_aux_texture(aux_w, aux_h)
+        aux = self._create_texture(aux_w, aux_h)
+        self._assert(aux is not None)
+        sdl2.SDL_SetTextureBlendMode(aux, sdl2.SDL_BLENDMODE_BLEND)
+        self._set_logical_size_for_aux(aux_w, aux_h)
+        sdl2.SDL_SetRenderTarget(self.REN, aux)
 
-        # Desenhar polígono na textura auxiliar
+        clr = self.state.color_clear
+        self.state.color_clear = (0, 0, 0, 0)
+        self._set_color(self.state.color_clear)
+        self._clear_target_with_defined_color()
+        self._restore_draw_color()
+        self.state.color_clear = clr
+
         color = self.state.color_draw
         r, g, b, a = color[0], color[1], color[2], color[3]
 
@@ -925,17 +986,12 @@ class PicoPy(Settings, metaclass=Singleton):
             sdlgfx.filledPolygonRGBA(self.REN, ax_c, ay_c, count, r, g, b, a)
         elif self.state.style == self.DRAW_STROKE:
             sdlgfx.polygonRGBA(self.REN, ax_c, ay_c, count, r, g, b, a)
-        
-        # Restaurar estado original do renderizador
-        self._restore_render_state(clip, target)
 
-        # Aplicar transformações e desenhar textura auxiliar na TEX principal
+        self._set_render_target_tex_after_aux()
         current_anchor = self.state.anchor_pos
-        self.state.anchor_pos = (self.POS_LEFT, self.POS_TOP) # Temporariamente para _output_draw_tex
+        self.state.anchor_pos = (self.POS_LEFT, self.POS_TOP)
         self._output_draw_tex(pos, aux, self.DIM_KEEP)
-        self.state.anchor_pos = current_anchor # Restaura anchor original
-        
-        # Destruir textura auxiliar
+        self.state.anchor_pos = current_anchor
         sdl2.SDL_DestroyTexture(aux)
 
     def output_draw_image(self, pos, path):
@@ -961,7 +1017,6 @@ class PicoPy(Settings, metaclass=Singleton):
             self._hash[path] = texture # type: ignore
 
         self._output_draw_tex(pos, texture, dim)
-        self._output_present(0)
 
     def set_style(self, style):
         """
@@ -1128,19 +1183,16 @@ class PicoPy(Settings, metaclass=Singleton):
             pos: Uma tupla (x, y) representando a posição do texto.
             text: A string de texto a ser desenhada.
         """
-        # Chama a versão estendida, mantendo o tamanho da fonte atual
-        self.output_draw_text_ext(pos, text, self.state.font_h) # Assumindo self.state.font_size armazena o tamanho
-                                                                    # para corresponder ao SIZE_KEEP do C
-                                                                    # ou ajuste para um valor padrão se não houver um "current_font_size"
+        self.output_draw_text_ext(pos, text, self.DIM_KEEP)
 
-    def output_draw_text_ext(self, pos: tuple[int, int], text: str, size: int):
+    def output_draw_text_ext(self, pos: tuple[int, int], text: str, size):
         """
-        Desenha um texto na tela usando a posição, string e tamanho de fonte especificados.
+        Desenha um texto na tela (equiv. pico_output_draw_text_ext).
 
         Args:
             pos: Uma tupla (x, y) representando a posição do texto.
             text: A string de texto a ser desenhada.
-            size: O tamanho da fonte a ser usado para este texto.
+            size: Pico_Dim ou DIM_KEEP (0, 0) para tamanho natural da textura.
         """
         if not text:
             return
@@ -1149,26 +1201,26 @@ class PicoPy(Settings, metaclass=Singleton):
             print("Erro: Nenhuma fonte TTF carregada. Chame pico_set_font primeiro.")
             return
 
-        # Renderiza o texto para uma SDL_Surface
-        sdl_color = sdl2.SDL_Color(self.state.color_draw[0], self.state.color_draw[1], self.state.color_draw[2], self.state.color_draw[3])
-        sfc = sdlttf.TTF_RenderText_Blended(self.state.font_ttf, text.encode('utf-8'), sdl_color) # .encode('utf-8') para C-string
+        sdl_color = sdl2.SDL_Color(
+            self.state.color_draw[0],
+            self.state.color_draw[1],
+            self.state.color_draw[2],
+            self.state.color_draw[3],
+        )
+        sfc = sdlttf.TTF_RenderText_Blended(
+            self.state.font_ttf, text.encode("utf-8"), sdl_color
+        )
         if not sfc:
             print(f"Erro TTF_RenderText_Blended: {self.get_error()}")
             return
 
-        # Cria uma SDL_Texture a partir da SDL_Surface
         tex = sdl2.SDL_CreateTextureFromSurface(self.REN, sfc)
         if not tex:
             print(f"Erro SDL_CreateTextureFromSurface: {self.get_error()}")
             sdl2.SDL_FreeSurface(sfc)
             return
 
-        w = ctypes.c_int()
-        h = ctypes.c_int()
-        sdl2.SDL_QueryTexture(tex, None, None, ctypes.byref(w), ctypes.byref(h))
-        dim = (w.value, h.value)
-
-        self._output_draw_tex(pos, tex, dim)
+        self._output_draw_tex(pos, tex, size)
 
         # Libera os recursos
         sdl2.SDL_DestroyTexture(tex)
