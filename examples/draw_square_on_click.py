@@ -1,4 +1,3 @@
-import sys
 from picopy.pico import PicoPy
 
 

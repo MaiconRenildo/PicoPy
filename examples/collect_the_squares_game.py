@@ -1,5 +1,4 @@
 import random
-import sys
 import time
 
 from picopy.pico import PicoPy
@@ -28,14 +27,8 @@ def handle_collision(player_square, red_squares_list, consumed_flags):
 pico = PicoPy()
 
 pico.init(True)
-
-window_dim = pico.get_dim_window()
-world_dim = pico.get_dim_world()
-window_width, window_height = window_dim[0], window_dim[1]
-world_width, world_height = world_dim[0], world_dim[1]
-
-# Não é necessário usar set_size, pois o init já utilizou o default
-# pico.set_size((window_width, window_height), (world_width, world_height))
+window_width, window_height = pico.get_dim_window()
+world_width, world_height = pico.get_dim_world()
 pico.set_anchor_pos((pico.POS_LEFT, pico.POS_TOP))
 
 square_size = 5
@@ -126,4 +119,3 @@ while running:
 
 pico.init(False)
 print("PicoPy shut down.")
-
