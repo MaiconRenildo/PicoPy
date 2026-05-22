@@ -209,7 +209,7 @@ class PicoPy(Settings, metaclass=Singleton):
             rot_center,
             flip
         )
-        self._output_present(0)
+        # self._output_present(0)
 
     def _copy_TEX_to_window(self):
         """Copia a textura principal do mundo(TEX) para a janela(BackBuffer)"""
@@ -508,7 +508,7 @@ class PicoPy(Settings, metaclass=Singleton):
         """Limpa o target atual com a cor de limpeza (equiv. pico_output_clear)."""
         if self.REN:
             self._pico_output_clear()
-            self._output_present(0)
+            # self._output_present(0)
 
     def output_present(self):
         """Apresenta o conteúdo renderizado na tela"""
