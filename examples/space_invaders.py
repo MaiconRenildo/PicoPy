@@ -139,6 +139,7 @@ ENEMY_DESCENT_AMOUNT = 0.5
 # game over constants
 GAME_OVER_FONT_SIZE = 10
 GAME_OVER_MESSAGE_DELAY_MS = 5000
+SCORE_FONT_SIZE = 10 # Tamanho adequado para a pontuação
 
 
 pico = PicoPy()
@@ -155,6 +156,9 @@ player = Player(player_x, player_y, PLAYER_WIDTH, PLAYER_HEIGHT, pico.COLOR_GREE
 # Inicialize player bullets
 player_bullets: list[Bullet] = []
 last_shot_time = 0
+
+# Inicialize score (Pontuação)
+score = 0
 
 # Inicialize enemies e waves
 current_wave = 1
@@ -238,6 +242,7 @@ while running and not game_over:
             if bullet.is_colliding_with(enemy):
                 bullet.active = False
                 enemy.active = False
+                score += 10 # Adiciona 10 pontos ao destruir um inimigo
                 break
 
     # --- Drawing All Elements ---
@@ -253,6 +258,21 @@ while running and not game_over:
             bullet.draw(pico) # Using Bullet.draw
         # Draw player
         player.draw(pico) # Using Player.draw
+        
+        # --- Desenhar Pontuação (Canto Superior Direito) ---
+        pico.set_color(pico.COLOR_WHITE)
+        pico.set_font(None, SCORE_FONT_SIZE)
+        
+        # Posiciona no canto superior direito com um pequeno recuo (offset) de 2 unidades
+        score_x, score_y = pico.pos((pico.POS_RIGHT, pico.POS_TOP), offset=(-2, 2))
+        
+        # Alinha a âncora à direita para o texto crescer para a esquerda sem sumir da tela
+        pico.set_anchor_pos((pico.POS_RIGHT, pico.POS_TOP))
+        pico.set_anchor_rotate((pico.POS_RIGHT, pico.POS_TOP))
+        # pico.set_angle(0)
+        
+        pico.output_draw_text((score_x, score_y), f"{score}")
+        
         pico.output_present()
     else:
         pico.output_clear()
@@ -264,6 +284,12 @@ while running and not game_over:
         pico.set_anchor_rotate((pico.POS_CENTER, pico.POS_MIDDLE))
         pico.set_angle(0)
         pico.output_draw_text((text_pos_x, text_pos_y), "GAME OVER!")
+        
+        # Desenha a pontuação final na tela de Game Over logo abaixo da mensagem principal
+        pico.set_font(None, SCORE_FONT_SIZE)
+        pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
+        pico.output_draw_text((text_pos_x, text_pos_y + 10), f"Score:{score}")
+        
         pico.output_present()
         pico.input_delay(GAME_OVER_MESSAGE_DELAY_MS) # Keep game over message on screen for 5 seconds
 
