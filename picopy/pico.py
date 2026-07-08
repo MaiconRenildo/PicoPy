@@ -1285,3 +1285,11 @@ class PicoPy(Settings, metaclass=Singleton):
     def is_mouse_motion_event(self, event) -> bool:
         """Verifica se o evento é um evento de movimento do mouse."""
         return event.type == self.EVENT_MOUSEMOTION
+
+    def set_title(self, title: str):
+        """Define o título da janela."""
+        self.WINDOW_TITLE = title
+
+    def get_title(self) -> str:
+        """Obtém o título da janela."""
+        return self.WINDOW_TITLE

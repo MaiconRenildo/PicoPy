@@ -1,4 +1,3 @@
-import sys
 import time
 import random
 
@@ -174,6 +173,7 @@ GAME_OVER_MESSAGE_DELAY_MS = 3000
 STATE_MENU, STATE_PLAYING, STATE_PAUSE, STATE_RECORD_INPUT = 0, 1, 2, 3
 
 pico = PicoPy()
+pico.set_title("Space Invaders")
 world_width, world_height = pico.get_dim_world()
 pico.init(True)
 
