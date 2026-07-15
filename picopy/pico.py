@@ -534,6 +534,10 @@ class PicoPy(Settings, metaclass=Singleton):
             self.state.scroll[1] + (org[1] - new_cur[1]) // 2,
         )
 
+    def get_zoom(self):
+        """Obtém o zoom atual."""
+        return self.state.zoom
+
     def _pico_set_size(self, phy, log):
         """Equiv. _pico_set_size em a.c."""
         if phy != self.DIM_KEEP:
@@ -712,11 +716,19 @@ class PicoPy(Settings, metaclass=Singleton):
             self.state.font_ttf = sdlttf.TTF_OpenFont(file.encode('utf-8'), self.state.font_h)
         
         self._assert(self.state.font_ttf is not None)
+    
+    def get_font(self):
+        """Obtém a fonte atual."""
+        return self.state.font_ttf
 
     def set_grid(self, on: bool):
         """Define se a grade deve ser exibida"""
         self.state.grid = on
         self._output_present(0)
+
+    def get_grid(self):
+        """Obtém se a grade deve ser exibida."""
+        return self.state.grid
 
     def output_draw_pixel(self, pos):
         """Desenha um pixel na posição especificada"""
@@ -1035,6 +1047,10 @@ class PicoPy(Settings, metaclass=Singleton):
         """
         self.state.style = style
 
+    def get_style(self):
+        """Obtém o estilo de desenho atual."""
+        return self.state.style
+
     def get_key(self, key):
         """Verifica se uma tecla específica está pressionada.
 
@@ -1122,9 +1138,13 @@ class PicoPy(Settings, metaclass=Singleton):
         """
         self.state.color_draw = color
         self._set_color(color)
+    
+    def get_color(self):
+        """Obtém a cor de desenho atual."""
+        return self.state.color_draw
 
-    def set_grid_world_unit(self, unit: int):
-        self.state.grid_world_unit = unit
+    # def set_grid_world_unit(self, unit: int):
+    #     self.state.grid_world_unit = unit
 
     def set_anchor_rotate(self, anchor: tuple[int, int]):
         """Define o ponto de ancoragem para a rotação de objetos.
@@ -1182,6 +1202,10 @@ class PicoPy(Settings, metaclass=Singleton):
             angle: O ângulo de rotação em graus.
         """
         self.state.angle = angle
+
+    def get_angle(self):
+        """Obtém o ângulo de rotação atual."""
+        return self.state.angle
 
 
     #################################################################

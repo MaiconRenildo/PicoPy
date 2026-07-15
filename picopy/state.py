@@ -25,4 +25,4 @@ class PicoState:
         # PICO_DIM_PHY / PICO_DIM_LOG (pico.h); size.org/cur zerados no C até set_size
         self.dim_window = Settings.DIM_WINDOW
         self.dim_world = Settings.DIM_WORLD
-        self.grid_world_unit: int = 1
+        # self.grid_world_unit: int = 1
