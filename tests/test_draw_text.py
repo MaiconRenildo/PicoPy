@@ -63,6 +63,7 @@ class TestDrawText(PicoTestBase):
             self.screenshot_and_compare("draw_text_rotated_45.png")
             
             self.pico.output_clear()
+            self.pico.output_present()
             self.pico.set_angle(90)
             self.pico.output_draw_text(self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE)), "PicoPy")
             self.screenshot_and_compare("draw_text_rotated_90.png")

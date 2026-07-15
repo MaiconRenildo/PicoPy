@@ -20,6 +20,9 @@ class TestDrawImage(PicoTestBase):
         self.pico.output_present()
         self.screenshot_and_compare("simple_image_top_left.png")
         self.pico.output_clear()
+        self.pico.output_present()
+
+        
 
         ####### Desenha a imagem centralizada
         center_x, center_y = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
@@ -27,6 +30,7 @@ class TestDrawImage(PicoTestBase):
         self.pico.output_present()
         self.screenshot_and_compare("simple_image_center.png")
         self.pico.output_clear()
+        self.pico.output_present()
 
         ####### Desenha no canto esquerdo e centralizada na vertical
         # Parte da imagem fica a esquerda da janela
@@ -34,6 +38,7 @@ class TestDrawImage(PicoTestBase):
         self.pico.output_present()
         self.screenshot_and_compare("simple_image_center_y.png")
         self.pico.output_clear()
+        self.pico.output_present()
 
         ####### Desenha no canto superior e centralizada na horizontal
         # Parte da imagem fica acima da janela
