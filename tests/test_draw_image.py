@@ -17,33 +17,26 @@ class TestDrawImage(PicoTestBase):
         
         ####### Desenha a imagem com seu centro no canto superior esquerdo
         self.pico.output_draw_image((0, 0), SKY_IMAGE_PATH)
-        self.pico.output_present()
         self.screenshot_and_compare("simple_image_top_left.png")
         self.pico.output_clear()
-        self.pico.output_present()
 
         
 
         ####### Desenha a imagem centralizada
         center_x, center_y = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_draw_image((center_x, center_y), SKY_IMAGE_PATH)
-        self.pico.output_present()
         self.screenshot_and_compare("simple_image_center.png")
         self.pico.output_clear()
-        self.pico.output_present()
 
         ####### Desenha no canto esquerdo e centralizada na vertical
         # Parte da imagem fica a esquerda da janela
         self.pico.output_draw_image((0, center_y), SKY_IMAGE_PATH)
-        self.pico.output_present()
         self.screenshot_and_compare("simple_image_center_y.png")
         self.pico.output_clear()
-        self.pico.output_present()
 
         ####### Desenha no canto superior e centralizada na horizontal
         # Parte da imagem fica acima da janela
         self.pico.output_draw_image((center_x, 0), SKY_IMAGE_PATH)
-        self.pico.output_present()
         self.screenshot_and_compare("simple_image_center_x.png")
         # self.pico.set_dim_window(original_dim_window)
         # self.pico.set_dim_world(original_dim_world)
@@ -65,7 +58,6 @@ class TestDrawImage(PicoTestBase):
         self.pico.set_zoom((50, 50))
         self.pico.output_clear() # limpa a nova textura com o preto
         self.pico.output_draw_image((center_x, center_y), SKY_IMAGE_PATH)
-        self.pico.output_present()
         self.screenshot_and_compare("simple_image_center_x_zoom_50.png")
         # self.pico.set_dim_window(original_dim_window)
         # self.pico.set_dim_world(original_dim_world)
@@ -85,7 +77,6 @@ class TestDrawImage(PicoTestBase):
         center_x, center_y = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         # Desenho com zoom de 100
         self.pico.output_draw_image((center_x, center_y), SKY_IMAGE_PATH)
-        self.pico.output_present()
 
         self.screenshot_and_compare("simple_image_center_x_zoom_100.png")
         # self.pico.set_dim_window(original_dim_window)
@@ -111,7 +102,6 @@ class TestDrawImage(PicoTestBase):
         # se essa linha for adicionada antes do pico_output_clear(),
         # a imagem gerada não terá o fundo preto.
         self.pico.output_draw_image((center_x, center_y), SKY_IMAGE_PATH)
-        self.pico.output_present()
         self.screenshot_and_compare("simple_image_center_x_zoom_100.png")
         # self.pico.set_dim_window(original_dim_window)
         # self.pico.set_dim_world(original_dim_world)
@@ -132,7 +122,6 @@ class TestDrawImage(PicoTestBase):
         self.pico.set_zoom((167, 167))
         self.pico.output_clear()
         self.pico.output_draw_image((center_x, center_y), SKY_IMAGE_PATH)
-        self.pico.output_present()
         self.screenshot_and_compare("simple_image_center_x_zoom_160.png")
 
     def test_image_cache(self):
@@ -148,5 +137,4 @@ class TestDrawImage(PicoTestBase):
         self.pico.output_draw_image((10, 10), SKY_IMAGE_PATH)
         second_texture_id = id(self.pico._hash[SKY_IMAGE_PATH])
         assert first_texture_id == second_texture_id # mesma textura
-        self.pico.output_present()
         self.screenshot_and_compare("image_cache_test.png")

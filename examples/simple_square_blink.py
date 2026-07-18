@@ -30,11 +30,9 @@ while running:
     square_y = random.randint(0, max_y)
     square_rect = (square_x, square_y, square_size, square_size)
     pico.output_draw_rect(square_rect) # Desenha o quadrado
-    pico.output_present() # Exibe na tela
     pico.input_delay(delay_ms) # Espera 1 segundo
 
     pico.output_clear() # Limpa a tela para preto
-    pico.output_present() # Exibe tela sem o quadrado
     pico.input_delay(delay_ms) # Espera 1 segundo
 
     # Verifica se o usuário fechou a janela durante a espera

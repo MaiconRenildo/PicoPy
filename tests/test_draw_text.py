@@ -21,7 +21,6 @@ class TestDrawText(PicoTestBase):
         self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.set_anchor_pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_draw_text(self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE)), "Centralized!")
-        self.pico.output_present()
         self.screenshot_and_compare("draw_text_centered.png")
 
     def test_draw_text_in_top_and_centered_with_custom_color(self):
@@ -63,7 +62,7 @@ class TestDrawText(PicoTestBase):
             self.screenshot_and_compare("draw_text_rotated_45.png")
             
             self.pico.output_clear()
-            self.pico.output_present()
+
             self.pico.set_angle(90)
             self.pico.output_draw_text(self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE)), "PicoPy")
             self.screenshot_and_compare("draw_text_rotated_90.png")

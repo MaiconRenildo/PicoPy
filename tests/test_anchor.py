@@ -10,7 +10,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_clear()
         self.pico.output_draw_pixel(pt)
-        self.pico.output_present()
         # igual ao "/pixel50x50y_lefttop.png"
         self.screenshot_and_compare("pixel50x50y_center.png")
 
@@ -20,7 +19,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_clear()
         self.pico.output_draw_pixel(pt)
-        self.pico.output_present()
         # igual ao "/pixel50x50y_center.png"
         self.screenshot_and_compare("pixel50x50y_lefttop.png")
 
@@ -30,7 +28,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_clear()
         self.pico.output_draw_pixel(pt)
-        self.pico.output_present()
         # 1 pixel para a esquerda e 1 para cima
         self.screenshot_and_compare("pixel50x50y_rightbottom.png")
 
@@ -41,7 +38,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_clear()
         self.pico.output_draw_rect((pt[0], pt[1], 4, 4))
-        self.pico.output_present()
         # no meio da janela
         self.screenshot_and_compare("rect50x50y_center.png")
 
@@ -51,7 +47,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_clear()
         self.pico.output_draw_rect((pt[0], pt[1], 4, 4))
-        self.pico.output_present()
         # Ancora no ponto superior esquerdo, então o quadrado fica à direita e para baixo
         self.screenshot_and_compare("rect50x50y_lefttop.png")
 
@@ -61,7 +56,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_clear()
         self.pico.output_draw_rect((pt[0], pt[1], 4, 4))
-        self.pico.output_present()
         # Ancora no ponto inferior direito, então o quadrado fica à esquerda e para cima
         self.screenshot_and_compare("rect50x50y_rightbottom.png")
 
@@ -71,7 +65,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_CENTER, self.pico.POS_MIDDLE))
         self.pico.output_clear()
         self.pico.output_draw_rect((pt[0], pt[1], 4, 4))
-        self.pico.output_present()
         # Ancora na direita no meio, então fica para a esquerda e centralizado verticalmente
         self.screenshot_and_compare("rect50x50y_rightcenter.png")
 
@@ -81,7 +74,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_RIGHT, self.pico.POS_BOTTOM)) # 100% da largura, 100% da altura
         self.pico.output_clear()
         self.pico.output_draw_rect((pt[0], pt[1], 4, 4))
-        self.pico.output_present()
         self.screenshot_and_compare("rect_bottom_right_corner.png")
 
     def test_rect_bottom_left_corner(self):
@@ -90,7 +82,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_LEFT, self.pico.POS_BOTTOM)) # 0% da largura, 100% da altura
         self.pico.output_clear()
         self.pico.output_draw_rect((pt[0], pt[1], 4, 4))
-        self.pico.output_present()
         self.screenshot_and_compare("rect_bottom_left_corner.png")
 
     def test_rect_top_right_corner(self):
@@ -99,7 +90,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_RIGHT, self.pico.POS_TOP)) # 100% da largura, 0% da altura
         self.pico.output_clear()
         self.pico.output_draw_rect((pt[0], pt[1], 4, 4))
-        self.pico.output_present()
         self.screenshot_and_compare("rect_top_right_corner.png")
 
     def test_rect_top_left_corner(self):
@@ -108,7 +98,6 @@ class TestAnchor(PicoTestBase):
         pt = self.pico.pos((self.pico.POS_LEFT, self.pico.POS_TOP)) # 0% da largura, 0% da altura
         self.pico.output_clear()
         self.pico.output_draw_rect((pt[0], pt[1], 4, 4))
-        self.pico.output_present()
         self.screenshot_and_compare("rect_top_left_corner.png")
 
     def test_nested_rectangles_bottom_left(self):
@@ -143,7 +132,6 @@ class TestAnchor(PicoTestBase):
             (center_x_target, center_y_target, extra_small_rect_w, extra_small_rect_h)
         )
 
-        self.pico.output_present()
         self.screenshot_and_compare("nested_rectangles_bottom_left.png")
 
 
@@ -178,7 +166,6 @@ class TestAnchor(PicoTestBase):
         self.pico.set_anchor_pos((75, 75))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
 
-        self.pico.output_present()
         self.screenshot_and_compare("combined_non_standard_anchors.png")
 
     def test_combined_extreme_anchors(self):
@@ -209,7 +196,6 @@ class TestAnchor(PicoTestBase):
         self.pico.set_anchor_pos((125, 125))
         self.pico.output_draw_rect((central_pt[0], central_pt[1], rect_w, rect_h))
 
-        self.pico.output_present()
         self.screenshot_and_compare("combined_extreme_anchors.png")
    
     def test_anchor_with_different_object_sizes(self):
@@ -235,7 +221,6 @@ class TestAnchor(PicoTestBase):
         self.pico.set_color(self.pico.COLOR_WHITE)
         self.pico.output_draw_pixel(central_pt)
 
-        self.pico.output_present()
         self.screenshot_and_compare("anchor_different_object_sizes.png")
 
 
@@ -277,5 +262,4 @@ class TestAnchor(PicoTestBase):
         # Retorna o scroll para (0,0) para não afetar outros testes
         self.pico.set_scroll((0, 0))
 
-        self.pico.output_present()
         self.screenshot_and_compare("anchor_with_camera_scroll.png")

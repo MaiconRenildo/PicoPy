@@ -27,7 +27,6 @@ while running:
     pico.output_clear()
     for rect in squares_list:
         pico.output_draw_rect(rect)
-    pico.output_present()
     pico.input_delay(16)
 pico.init(False)
 print("PicoPy desligado.")

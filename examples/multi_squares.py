@@ -64,7 +64,6 @@ while running:
         rand_y = random.randint(0, world_height - 1)
         pico.output_draw_rect((rand_x, rand_y, square_size, square_size))
 
-    pico.output_present()
     pico.input_delay(frame_delay_ms)
 
 pico.init(False)

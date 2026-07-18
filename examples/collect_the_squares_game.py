@@ -66,7 +66,6 @@ while running:
         pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
         text_pos = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
         pico.output_draw_text(text_pos, "GAME OVER!")
-        pico.output_present()
         pico.input_delay(text_delay_ms)
         running = False
         break
@@ -83,7 +82,6 @@ while running:
         pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
         text_pos = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
         pico.output_draw_text(text_pos, "YOU WON!")
-        pico.output_present()
         pico.input_delay(3000)
         running = False
         break
@@ -114,7 +112,6 @@ while running:
     pico.set_color(pico.COLOR_YELLOW)
     pico.set_style(pico.DRAW_FILL)
     pico.output_draw_rect(player_square)
-    pico.output_present()
     pico.input_delay(frame_delay_ms)
 
 pico.init(False)
