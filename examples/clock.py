@@ -49,9 +49,6 @@ while running:
     # Desenha o texto do cronômetro
     pico.output_draw_text((center_x, center_y), time_string)
     
-    # Atualiza a tela
-    pico.output_present()
-    
     # Controla a taxa de atualização (FPS)
     pico.input_delay(FRAME_DELAY_MS)
 

@@ -34,7 +34,6 @@ while running:
     pico.set_style(pico.DRAW_FILL)
     pico.output_draw_rect(player_square)
 
-    pico.output_present()
     pico.input_delay(frame_delay_ms)
 
 pico.init(False)
