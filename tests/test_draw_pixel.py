@@ -48,7 +48,6 @@ class TestDrawPixel(PicoTestBase):
         for i in range(16):
             self.pico.output_draw_pixel((i, i))
             self.pico.output_draw_pixel((15 - i, i))
-        self.pico.output_present()
         self.screenshot_and_compare("diagonal_pixels.png")
         # Restaura dimensões originais (a fixture fará o cleanup do pico_init)
         self.pico.set_dim_window(original_dim_window)

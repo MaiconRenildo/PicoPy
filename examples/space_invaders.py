@@ -1,6 +1,4 @@
-import sys
 import time
-import sdl2
 import random
 
 from picopy.pico import PicoPy
@@ -53,18 +51,20 @@ class Player(GameObject):
         self.y = max(0, min(self.y, world_height - self.h))
 
     def draw(self, pico: PicoPy):
-        """Draws the player as a triangular ship."""
+        """Draws the player as a mathematically symmetrical triangular ship."""
         if self.active:
             pico.set_color(self.color)
             pico.set_style(pico.DRAW_FILL)
             
-            # Define vertices for a triangular ship shape
+            # Extrai os componentes convertendo uma única vez para performance
+            x, y, w, h = int(self.x), int(self.y), self.w, self.h
+            
             player_vertices = [
-                (int(self.x + self.w // 2), int(self.y)),             # Top center
-                (int(self.x), int(self.y + self.h)),                 # Bottom-left
-                (int(self.x + self.w), int(self.y + self.h))         # Bottom-right
+                (x + w // 2, y),      # Top center (Bico da nave)
+                (x, y + h),           # Bottom-left
+                (x + w, y + h)        # Bottom-right
             ]
-            pico.output_draw_poly(player_vertices, len(player_vertices))
+            pico.output_draw_poly(player_vertices, 3)
 
 
 class Bullet(GameObject):
@@ -83,7 +83,6 @@ class Enemy(GameObject):
     """Represents an enemy ship."""
     def __init__(self, x: float, y: float, w: int, h: int, color: tuple, speed: float):
         super().__init__(x, y, w, h, color, speed)
-        # Enemies might have additional properties, e.g., points, type, etc.
 
     def update(self, direction: int):
         """Moves the enemy horizontally."""
@@ -116,169 +115,357 @@ def create_enemies_wave(pico: PicoPy, wave_number: int, world_width: int, world_
         for col in range(enemy_cols):
             ex = start_x_offset + col * enemy_spacing_x
             ey = INITIAL_ENEMY_WAVE_Y + row * enemy_spacing_y
-            enemies.append(Enemy(ex, ey, enemy_w, enemy_h, pico.COLOR_RED, enemy_move_speed)) # Using Colors class
+            enemies.append(Enemy(ex, ey, enemy_w, enemy_h, pico.COLOR_RED, enemy_move_speed))
     return enemies
 
+def reset_game_anchor(pico: PicoPy):
+    """Resets the global alignment, rotation anchor, and angle to defaults."""
+    pico.set_anchor_pos((pico.POS_LEFT, pico.POS_TOP))
+    pico.set_anchor_rotate((pico.POS_LEFT, pico.POS_TOP))
+    pico.set_angle(0)
 
-def main():
-    #### constants ####
-    FRAME_DELAY_MS = 16
-    SHOT_COOLDOWN_MS = 200 # 200ms between shots
+def load_high_score() -> tuple[int, str]:
+    """Loads the high score and the holder's name. Returns (0, '---') if empty."""
+    try:
+        with open("highscore.txt", "r") as file:
+            data = file.read().strip().split(",")
+            if len(data) == 2:
+                return int(data[0]), data[1]
+    except (FileNotFoundError, ValueError):
+        pass
+    return 0, "---"
+
+def save_high_score(new_high_score: int, holder_name: str):
+    """Saves the new highest score and the holder's name to a file."""
+    try:
+        with open("highscore.txt", "w") as file:
+            file.write(f"{new_high_score},{holder_name}")
+    except IOError:
+        print("Error: Could not save high score to file.")
+
+
+#### Constants ####
+FRAME_DELAY_MS = 16
+SHOT_COOLDOWN_MS = 200 
+POINTS_PER_ENEMY = 10
+
+# Movement directions
+DIR_RIGHT, DIR_LEFT = 1, -1
+
+# Player constants
+PLAYER_WIDTH, PLAYER_HEIGHT = 4, 4
+PLAYER_INITIAL_SPEED = 1
+
+# Bullet constants
+BULLET_WIDTH, BULLET_HEIGHT = 1, 2
+BULLET_SPEED = 1
+
+# Enemy constants
+ENEMY_DESCENT_AMOUNT = 0.5
+
+# Interface and font constants
+GAME_OVER_FONT_SIZE = 8
+SCORE_FONT_SIZE = 8
+TITLE_FONT_SIZE = 8 
+GAME_OVER_MESSAGE_DELAY_MS = 3000
+
+# Game States
+STATE_MENU, STATE_PLAYING, STATE_PAUSE, STATE_RECORD_INPUT = 0, 1, 2, 3
+
+pico = PicoPy()
+pico.set_title("Space Invaders")
+world_width, world_height = pico.get_dim_world()
+pico.set_expert(True)
+pico.init(True)
+
+# Initialize player
+initial_player_x, initial_player_y = pico.pos(
+    (pico.POS_CENTER, pico.POS_BOTTOM),
+    offset=(0, -(PLAYER_HEIGHT * 2)) 
+)
+player_x, player_y = initial_player_x, initial_player_y
+player = Player(player_x, player_y, PLAYER_WIDTH, PLAYER_HEIGHT, pico.COLOR_GREEN, PLAYER_INITIAL_SPEED)
+
+# Initialize player bullets
+player_bullets: list[Bullet] = []
+last_shot_time = 0
+
+# Initialize score and load ranking/record from file
+score = 0
+high_score, high_score_name = load_high_score()
+new_record_name = ""       # Stores characters during input state
+last_key_pressed = None    # Keyboard debounce control
+
+# Initialize enemies and waves
+current_wave = 1
+enemies: list[Enemy] = create_enemies_wave(pico, current_wave, world_width, world_height)
+enemy_direction = DIR_RIGHT
+enemy_vertical_move_amount = ENEMY_DESCENT_AMOUNT
+
+running = True
+game_over = False
+game_state = STATE_MENU  
+return_pressed = False   
+event = pico.new_event_object()
+random.seed(time.time())
+
+print("Control the ship with LEFT/RIGHT arrows. Shoot with SPACE. Destroy the enemies! If enemies hit you or reach the bottom, it's Game Over.")
+
+while running:
     
-    # player constants
-    PLAYER_WIDTH = 4
-    PLAYER_HEIGHT = 4
-    PLAYER_INITIAL_SPEED = 1
+    # Close the game if the X of the window is clicked or if the ESC key is pressed
+    while pico.input_event_ask(event, pico.EVENT_ANY):
+        if pico.is_quit_event(event) or pico.is_key_event(event, pico.SCANCODE_ESCAPE):
+            running = False
 
-    # bullet constants
-    BULLET_WIDTH = 1
-    BULLET_HEIGHT = 2
-    BULLET_SPEED = 1
-    
-    # enemy constants
-    ENEMY_DESCENT_AMOUNT = 0.5
+    # Lógica de clique único para a tecla ENTER (RETURN)
+    key_return = pico.get_key(pico.SCANCODE_RETURN)
+    released_return = False
+    if key_return and not return_pressed:
+        return_pressed = True
+        released_return = True
+    elif not key_return:
+        return_pressed = False
 
-    # game over constants
-    GAME_OVER_FONT_SIZE = 10
-    GAME_OVER_MESSAGE_DELAY_MS = 5000
-
-
-    pico = PicoPy()
-    pixels_per_world_unit = 10
-    window_width, window_height = pico.get_display_resolution()
-    world_width = window_width // pixels_per_world_unit
-    world_height = window_height // pixels_per_world_unit
-    pico.set_dim_window((window_width, window_height))
-    pico.set_dim_world((world_width, world_height))
-    pico.init(True, fullscreen=True)
-
-    # Initialize player
-    player_x, player_y = pico.pos(
-        (pico.POS_CENTER, pico.POS_BOTTOM),
-        offset=(0, -(PLAYER_HEIGHT * 2)) # negative offset to move up from the bottom
-    )
-    player = Player(player_x, player_y, PLAYER_WIDTH, PLAYER_HEIGHT, pico.COLOR_GREEN, PLAYER_INITIAL_SPEED)
-
-    # Inicialize player bullets
-    player_bullets: list[Bullet] = []
-    last_shot_time = 0
-
-    # Inicialize enemies e waves
-    current_wave = 1
-    enemies: list[Enemy] = create_enemies_wave(pico, current_wave, world_width, world_height)
-    enemy_direction = 1 # 1 for right, -1 for left
-    enemy_vertical_move_amount = ENEMY_DESCENT_AMOUNT
-
-    running = True
-    game_over = False
-    event = pico.new_event_object()
-    random.seed(time.time())
-
-    print("Control the ship with WASD. Shoot with SPACE. Destroy the enemies! If enemies hit you or reach the bottom, it's Game Over.")
-
-    while running and not game_over:
-        
-        # Close the game if the X of the window is clicked or if the ESC key is pressed
-        while pico.input_event_ask(event, pico.EVENT_ANY):
-            if pico.is_quit_event(event) or pico.is_key_event(event, pico.SCANCODE_ESCAPE):
-                running = False
-
-        # Player movement
-        if pico.get_key(pico.SCANCODE_LEFT):
-            player.move(-1, 0, world_width, world_height)
-        if pico.get_key(pico.SCANCODE_RIGHT):
-            player.move(1, 0, world_width, world_height)
-
-        # Shooting
-        current_ticks = pico.get_ticks() # Time in milliseconds
-        if pico.get_key(pico.SCANCODE_SPACE) and (current_ticks - last_shot_time > SHOT_COOLDOWN_MS):
-            new_bullet_y = player.y
-            new_bullet_x = player.x + (player.w - BULLET_WIDTH) // 2
-            new_bullet = Bullet(new_bullet_x, new_bullet_y, BULLET_WIDTH, BULLET_HEIGHT, pico.COLOR_YELLOW, BULLET_SPEED)
-            player_bullets.append(new_bullet)
-            last_shot_time = current_ticks
-        for bullet in player_bullets:
-            bullet.update() # move the bullet upwards
-        player_bullets = [b for b in player_bullets if b.active]
-
-        # --- Enemy Update (Horizontal Movement) ---
-        active_enemies = [e for e in enemies if e.active]
-        if active_enemies:
-            min_enemy_x = min(e.x for e in active_enemies)
-            max_enemy_x = max(e.x + e.w for e in active_enemies)
-            max_enemy_y = max(e.y + e.h for e in active_enemies)
-            current_enemy_speed = active_enemies[0].speed if active_enemies else 0
-            if enemy_direction == 1 and max_enemy_x >= world_width - int(current_enemy_speed):
-                enemy_direction = -1
-                for enemy in active_enemies: enemy.y += enemy_vertical_move_amount
-            elif enemy_direction == -1 and min_enemy_x <= current_enemy_speed:
-                enemy_direction = 1
-                for enemy in active_enemies: enemy.y += enemy_vertical_move_amount
-            for enemy in active_enemies:
-                enemy.update(enemy_direction) # Using Enemy.update
-
-            # Game Over Logic: Enemies hitting player or bottom
-            if max_enemy_y >= player.y:
-                for enemy in active_enemies:
-                    if player.is_colliding_with(enemy): # Using Player.is_colliding_with
-                        game_over = True
-                        print("GAME OVER: Enemy collided with player!")
-                        break
-                if not game_over and max_enemy_y >= world_height - 1:
-                    game_over = True
-                    print("GAME OVER: Enemies reached the bottom of the screen!")
-
+    # --- Sistema Nativo de Captura de Letras (Debounce) ---
+    pressed_char = None
+    if game_state == STATE_RECORD_INPUT:
+        for code in range(pico.SCANCODE_A, pico.SCANCODE_Z + 1):
+            if pico.get_key(code):
+                if last_key_pressed != code:  
+                    last_key_pressed = code
+                    pressed_char = chr(ord('A') + (code - pico.SCANCODE_A))
+                break
         else:
-            # All enemies in wave destroyed, spawn next wave!
-            current_wave += 1
-            enemies = create_enemies_wave(pico, current_wave, world_width, world_height)
-            enemy_direction = 1
-            print(f"Starting Wave {current_wave}!")
+            if not pico.get_key(pico.SCANCODE_BACKSPACE):
+                last_key_pressed = None
 
-        # Collision Detection (Player Bullet vs. Enemy)
-        for bullet in player_bullets:
-            if not bullet.active:
-                continue
-            for enemy in enemies:
-                if not enemy.active: 
+    pico.output_clear()
+
+    # --- 1. ESTADO: MENU INICIAL ---
+    if game_state == STATE_MENU:
+        pico.set_color(pico.COLOR_GREEN)
+        pico.set_font(None, TITLE_FONT_SIZE)
+
+        # Divisão do título de forma simétrica sem números mágicos
+        pico.set_anchor_pos((pico.POS_CENTER, pico.POS_BOTTOM))
+        y_offset = 0 if high_score == 0 else -SCORE_FONT_SIZE            
+        mx, my = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE), offset=(0, y_offset))
+        pico.output_draw_text((mx, my), "SPACE")
+        
+        pico.set_anchor_pos((pico.POS_CENTER, pico.POS_TOP))
+        pico.output_draw_text((mx, my), "INVADERS")
+
+        # Exibição do Recorde Atual (Ranking persistente)
+        if high_score > 0:
+            pico.set_color(pico.COLOR_YELLOW)
+            pico.set_font(None, SCORE_FONT_SIZE)
+            pico.set_anchor_pos((pico.POS_CENTER, pico.POS_TOP))
+            pico.output_draw_text((mx, my + 8), f"HI-SCORE: {high_score}")
+            mx, my = pico.pos((pico.POS_CENTER, pico.POS_TOP), offset=(0, SCORE_FONT_SIZE*2))
+            pico.output_draw_text((mx, my + 8), f"BY {high_score_name}")
+
+        if released_return:
+            game_state = STATE_PLAYING
+
+            score = 0
+            current_wave = 1
+            game_over = False
+            enemy_direction = DIR_RIGHT
+            enemies = create_enemies_wave(pico, current_wave, world_width, world_height)
+            player_bullets.clear()
+            player.x, player.y = initial_player_x, initial_player_y
+            player.active = True
+
+    # --- 2. ESTADO: PAUSE ---
+    elif game_state == STATE_PAUSE:
+        if released_return:
+            game_state = STATE_PLAYING
+
+        reset_game_anchor(pico)
+
+        for enemy in enemies: enemy.draw(pico)
+        for bullet in player_bullets: bullet.draw(pico)
+        player.draw(pico)
+
+        # Desenha o placar estático
+        pico.set_color(pico.COLOR_WHITE)
+        pico.set_font(None, SCORE_FONT_SIZE)
+        score_x, score_y = pico.pos((pico.POS_RIGHT, pico.POS_TOP))
+        pico.set_anchor_pos((pico.POS_RIGHT, pico.POS_TOP))
+        pico.output_draw_text((score_x, score_y), f"{score}")
+
+        # Desenha o texto de PAUSE por cima
+        pico.set_color(pico.COLOR_YELLOW)
+        pico.set_font(None, TITLE_FONT_SIZE)
+        pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
+        px, py = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
+        pico.output_draw_text((px, py), "PAUSE")
+
+    # --- 3. ESTADO: EM JOGO ---
+    elif game_state == STATE_PLAYING:
+        if released_return and not game_over:
+            game_state = STATE_PAUSE
+        
+        if not game_over:
+            reset_game_anchor(pico)
+            
+            # Player movement
+            if pico.get_key(pico.SCANCODE_LEFT):
+                player.move(-1, 0, world_width, world_height)
+            if pico.get_key(pico.SCANCODE_RIGHT):
+                player.move(1, 0, world_width, world_height)
+
+            # Shooting (Alinhado exatamente com o bico do triângulo)
+            current_ticks = pico.get_ticks() 
+            if pico.get_key(pico.SCANCODE_SPACE) and (current_ticks - last_shot_time > SHOT_COOLDOWN_MS):
+                new_bullet_y = player.y
+                new_bullet_x = player.x + (player.w // 2)
+                new_bullet = Bullet(new_bullet_x, new_bullet_y, BULLET_WIDTH, BULLET_HEIGHT, pico.COLOR_YELLOW, BULLET_SPEED)
+                player_bullets.append(new_bullet)
+                last_shot_time = current_ticks
+                
+            for bullet in player_bullets:
+                bullet.update() 
+            player_bullets = [b for b in player_bullets if b.active]
+
+            # --- Enemy Update & Edge Collision (DRY / Otimizado) ---
+            active_enemies = [e for e in enemies if e.active]
+            if active_enemies:
+                min_enemy_x = min(e.x for e in active_enemies)
+                max_enemy_x = max(e.x + e.w for e in active_enemies)
+                max_enemy_y = max(e.y + e.h for e in active_enemies)
+                speed = active_enemies[0].speed
+                
+                # Validação de colisão nas bordas (com int() na direita para a física de trava)
+                hit_right = (enemy_direction == DIR_RIGHT and max_enemy_x >= world_width - int(speed))
+                hit_left  = (enemy_direction == DIR_LEFT  and min_enemy_x <= speed)
+                
+                if hit_right or hit_left:
+                    enemy_direction *= -1 
+                    for enemy in active_enemies: 
+                        enemy.y += enemy_vertical_move_amount
+                        
+                for enemy in active_enemies:
+                    enemy.update(enemy_direction) 
+
+                # Game Over Logic
+                if max_enemy_y >= player.y:
+                    for enemy in active_enemies:
+                        if player.is_colliding_with(enemy): 
+                            game_over = True
+                            print("GAME OVER: Enemy collided with player!")
+                            break
+                    if not game_over and max_enemy_y >= world_height - 1:
+                        game_over = True
+                        print("GAME OVER: Enemies reached the bottom of the screen!")
+
+            else:
+                # All enemies in wave destroyed, spawn next wave!
+                current_wave += 1
+                enemies = create_enemies_wave(pico, current_wave, world_width, world_height)
+                enemy_direction = DIR_RIGHT
+                print(f"Starting Wave {current_wave}!")
+
+            # Collision Detection (Player Bullet vs. Enemy)
+            for bullet in player_bullets:
+                if not bullet.active:
                     continue
-                if bullet.is_colliding_with(enemy):
-                    bullet.active = False
-                    enemy.active = False
-                    break
+                for enemy in enemies:
+                    if not enemy.active: 
+                        continue
+                    if bullet.is_colliding_with(enemy):
+                        bullet.active = False
+                        enemy.active = False
+                        score += POINTS_PER_ENEMY 
+                        break
 
         # --- Drawing All Elements ---
-        pico.output_clear()
         pico.set_style(pico.DRAW_FILL)
 
         if not game_over:
-            # Draw enemies
-            for enemy in enemies:
-                enemy.draw(pico)
-            # Draw player bullets
-            for bullet in player_bullets:
-                bullet.draw(pico) # Using Bullet.draw
-            # Draw player
-            player.draw(pico) # Using Player.draw
-            pico.output_present()
+            reset_game_anchor(pico)
+            
+            for enemy in enemies: enemy.draw(pico)
+            for bullet in player_bullets: bullet.draw(pico)
+            player.draw(pico)
+            
+            # --- Desenhar Pontuação (Canto Superior Direito) ---
+            pico.set_color(pico.COLOR_WHITE)
+            pico.set_font(None, SCORE_FONT_SIZE)
+            score_x, score_y = pico.pos((pico.POS_RIGHT, pico.POS_TOP))
+            
+            pico.set_anchor_pos((pico.POS_RIGHT, pico.POS_TOP))
+            pico.set_anchor_rotate((pico.POS_RIGHT, pico.POS_TOP))
+            pico.output_draw_text((score_x, score_y), f"{score}")
         else:
-            pico.output_clear()
-            pico.set_color(pico.COLOR_WHITE) # Using Colors class
-            pico.set_font(None, GAME_OVER_FONT_SIZE) # Assuming font size 10 is appropriate for GAME OVER text
+            # --- Desenhar Interface de Game Over de Forma Limpa ---
+            pico.set_color(pico.COLOR_WHITE)
+            pico.set_font(None, GAME_OVER_FONT_SIZE)
             text_pos_x, text_pos_y = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
-            # Set anchor for text drawing (important for centering)
-            pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
-            pico.set_anchor_rotate((pico.POS_CENTER, pico.POS_MIDDLE))
-            pico.set_angle(0)
+            
+            pico.set_anchor_pos((pico.POS_CENTER, pico.POS_BOTTOM))
             pico.output_draw_text((text_pos_x, text_pos_y), "GAME OVER!")
+
+            pico.set_font(None, SCORE_FONT_SIZE)
+            pico.set_anchor_pos((pico.POS_CENTER, pico.POS_TOP))
+            pico.output_draw_text((text_pos_x, text_pos_y), f"Score: {score}")
+            
             pico.output_present()
-            pico.input_delay(GAME_OVER_MESSAGE_DELAY_MS) # Keep game over message on screen for 5 seconds
+            pico.input_delay(GAME_OVER_MESSAGE_DELAY_MS) 
+            
+            # Redirecionamento de estado dependendo do recorde
+            if score > high_score:
+                new_record_name = "" 
+                game_state = STATE_RECORD_INPUT 
+            else:
+                score = 0
+                game_over = False
+                game_state = STATE_MENU
 
-        pico.input_delay(FRAME_DELAY_MS)
+    # --- 4. ESTADO: ENTRADA DE RECORDE ---
+    elif game_state == STATE_RECORD_INPUT:
+        pico.set_color(pico.COLOR_YELLOW)
+        pico.set_font(None, TITLE_FONT_SIZE)
+        mx, my = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
+        
+        pico.set_anchor_pos((pico.POS_CENTER, pico.POS_BOTTOM))
+        pico.output_draw_text((mx, my), "NEW ")
 
-    # --- Finalization ---
-    pico.init(False)
-    print("Space Invaders game shut down.")
+        pico.set_font(None, SCORE_FONT_SIZE)
+        
+        pico.set_anchor_pos((pico.POS_CENTER, pico.POS_TOP))
+        pico.output_draw_text((mx, my), "HIGH SCORE!")
 
-if __name__ == "__main__":
-    sys.exit(main())
+        # Lógica de exclusão de caracteres (Backspace)
+        if pico.get_key(pico.SCANCODE_BACKSPACE):
+            if last_key_pressed != pico.SCANCODE_BACKSPACE:
+                new_record_name = new_record_name[:-1]
+                last_key_pressed = pico.SCANCODE_BACKSPACE
+        
+        # Acrescenta novos caracteres respeitando o limite máximo de 5
+        if pressed_char and len(new_record_name) < 5:
+            new_record_name += pressed_char
+
+        # Desenha o nome do jogador exatamente uma linha abaixo da instrução
+        pico.set_color(pico.COLOR_WHITE)
+        _, name_y = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE), offset=(0, SCORE_FONT_SIZE))
+        pico.output_draw_text((mx, name_y), new_record_name if new_record_name else "_____")
+
+        # Grava os dados finais em disco ao apertar Enter
+        if released_return and len(new_record_name) > 0:
+            high_score = score
+            high_score_name = new_record_name
+            save_high_score(high_score, high_score_name)
+            
+            # Reseta as flags mecânicas e retorna ao menu inicial
+            score = 0
+            game_over = False
+            game_state = STATE_MENU
+
+    pico.output_present()
+    pico.input_delay(FRAME_DELAY_MS)
+
+# --- Finalization ---
+pico.init(False)
+print("Space Invaders game shut down.")

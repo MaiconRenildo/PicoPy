@@ -63,13 +63,13 @@ class TestDrawBuffer(PicoTestBase):
 
         self.screenshot_and_compare("test_draw_buffer_fixed_pos_100_percent_zoom.png")
 
-        # --- Teste 2: Zoom de 200%(Objeto deve ficar maior) ---
+        # --- Teste 2: Zoom de 200%(Objeto deve ficar menor) ---
         self.pico.set_zoom(self.ZOOM_200_PERCENT)
         self.pico.output_clear() # Limpa a textura antes de desenhar
         self.pico.output_draw_buffer(pos_centro, buffer, dim)
         self.screenshot_and_compare("test_draw_buffer_fixed_pos_200_percent_zoom.png")
 
-        # --- Teste 3: Zoom de 50%(Objeto deve ficar menor) ---
+        # --- Teste 3: Zoom de 50%(Objeto deve ficar maior) ---
         self.pico.set_zoom(self.ZOOM_50_PERCENT)
         self.pico.output_clear() # Limpa a textura antes de desenhar
         self.pico.output_draw_buffer(pos_centro, buffer, dim)
