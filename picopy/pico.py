@@ -228,10 +228,6 @@ class PicoPy(Settings, metaclass=Singleton):
             max(1, self.state.dim_world[1] * 100 // zy)
         )
 
-
-    def new_event_object(self):
-        return sdl2.SDL_Event()
-
     def create_rect(self, x: int, y: int, w: int, h: int):
         return sdl2.SDL_Rect(x, y, w, h)
 
@@ -1105,40 +1101,27 @@ class PicoPy(Settings, metaclass=Singleton):
                 return
             start_ticks = sdl2.SDL_GetTicks() # Reinicia o contador para o próximo ciclo de espera
 
-    def input_event_ask(self, evt: sdl2.SDL_Event, type: int) -> int:
+    def input_event_ask(self, type: int) -> int:
         """
         Verifica se um evento SDL do tipo especificado está disponível imediatamente.
 
         Args:
-            evt: Um objeto SDL_Event onde o evento será copiado (se houver).
             type: O tipo de evento esperado (use ANY para qualquer evento).
         Returns:
             True se o evento corresponde e foi processado, False caso contrário.
         """
-        if self._pending_events:
-            e = self._pending_events.pop(0)
-            evt.type = e.type
-            if e.type == sdl2.SDL_KEYDOWN or e.type == sdl2.SDL_KEYUP:
-                evt.key = e.key
-            elif e.type == sdl2.SDL_MOUSEBUTTONDOWN or e.type == sdl2.SDL_MOUSEBUTTONUP:
-                evt.button = e.button
-            elif e.type == sdl2.SDL_MOUSEMOTION:
-                evt.motion = e.motion
-            return True
         e = sdl2.SDL_Event()
+        
+        # 1. Verifica fila de pendentes
+        if self._pending_events:
+            return self._pending_events.pop(0)
+
+        # 2. Polling na SDL
         has_event = sdl2.SDL_PollEvent(ctypes.byref(e))
-        if not has_event:
-            return False
-        if self._event_from_sdl(e, type):
-            evt.type = e.type
-            if e.type == sdl2.SDL_KEYDOWN or e.type == sdl2.SDL_KEYUP:
-                evt.key = e.key
-            elif e.type == sdl2.SDL_MOUSEBUTTONDOWN or e.type == sdl2.SDL_MOUSEBUTTONUP:
-                evt.button = e.button
-            elif e.type == sdl2.SDL_MOUSEMOTION:
-                evt.motion = e.motion
-            return True
-        return False
+        if has_event and self._event_from_sdl(e, type):
+            return e
+
+        return None
 
     def set_color(self, color):
         """

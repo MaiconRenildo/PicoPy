@@ -14,7 +14,6 @@ max_x = world_width - square_size
 max_y = world_height - square_size
 
 running = True
-event = pico.new_event_object()
 
 while running:
     pico.set_style(pico.DRAW_FILL)
@@ -36,7 +35,7 @@ while running:
     pico.input_delay(delay_ms) # Espera 1 segundo
 
     # Verifica se o usuário fechou a janela durante a espera
-    while pico.input_event_ask(event, pico.EVENT_QUIT):
+    while event := pico.input_event_ask(pico.EVENT_ANY):
         running = False
     if not running:
         break

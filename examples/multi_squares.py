@@ -15,12 +15,11 @@ pico.set_style(pico.DRAW_FILL)
 center_x, center_y = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
 
 running = True
-event = pico.new_event_object()
 
 print("Multiplos quadrados azuis serao desenhados. Feche a janela para sair.")
 
 while running:
-    while pico.input_event_ask(event, pico.EVENT_ANY):
+    while event := pico.input_event_ask(pico.EVENT_ANY):
         if pico.is_quit_event(event):
             running = False
             print("Evento QUIT detectado. Fechando...")

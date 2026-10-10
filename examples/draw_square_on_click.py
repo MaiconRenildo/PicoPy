@@ -13,10 +13,9 @@ pico.init(True)
 squares_list = []
 square_size = 1 # 1 PIXEL
 running = True
-event = pico.new_event_object()
 print("Clique na janela do PicoPy para desenhar quadrados azuis. Pressione 'X' para sair.")
 while running:
-    while pico.input_event_ask(event, pico.EVENT_ANY):
+    while event := pico.input_event_ask(pico.EVENT_ANY):
         if pico.is_quit_event(event):
             running = False
         elif pico.is_mouse_button_event(event, pico.MOUSE_LEFT):

@@ -54,7 +54,6 @@ for _ in range(num_red_squares):
     red_squares_list.append((square_x, square_y, square_size, square_size))
 
 running = True
-event = pico.new_event_object()
 
 start_time = pico.get_ticks()
 
@@ -86,7 +85,7 @@ while running:
         running = False
         break
 
-    while pico.input_event_ask(event, pico.EVENT_ANY):
+    while event := pico.input_event_ask(pico.EVENT_ANY):
         if pico.is_quit_event(event):
             running = False
 

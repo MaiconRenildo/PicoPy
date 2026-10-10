@@ -206,7 +206,6 @@ running = True
 game_over = False
 game_state = STATE_MENU  
 return_pressed = False   
-event = pico.new_event_object()
 random.seed(time.time())
 
 print("Control the ship with LEFT/RIGHT arrows. Shoot with SPACE. Destroy the enemies! If enemies hit you or reach the bottom, it's Game Over.")
@@ -214,7 +213,7 @@ print("Control the ship with LEFT/RIGHT arrows. Shoot with SPACE. Destroy the en
 while running:
     
     # Close the game if the X of the window is clicked or if the ESC key is pressed
-    while pico.input_event_ask(event, pico.EVENT_ANY):
+    while event := pico.input_event_ask(pico.EVENT_ANY):
         if pico.is_quit_event(event) or pico.is_key_event(event, pico.SCANCODE_ESCAPE):
             running = False
 

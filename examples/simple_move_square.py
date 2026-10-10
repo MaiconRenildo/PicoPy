@@ -11,11 +11,10 @@ pico.set_anchor_pos((pico.POS_LEFT, pico.POS_TOP))
 player_x, player_y = pico.pos((pico.POS_CENTER, pico.POS_MIDDLE))
 
 running = True
-event_object = pico.new_event_object()
 
 while running:
-    while pico.input_event_ask(event_object, pico.EVENT_ANY):
-        if pico.is_quit_event(event_object):
+    while event := pico.input_event_ask(pico.EVENT_ANY):
+        if pico.is_quit_event(event):
             running = False
 
     if pico.get_key(pico.SCANCODE_W):
