@@ -10,14 +10,13 @@ world_width, world_height = pico.get_dim_world()
 pico.init(True, fullscreen=False)
 
 running = True
-event = pico.new_event_object()
 
 print("Cronômetro iniciado! Pressione ESC ou feche a janela para sair.")
 
 while running:
     
     # Captura eventos do teclado/janela para fechar o script com segurança
-    while pico.input_event_ask(event, pico.EVENT_ANY):
+    while event := pico.input_event_ask(pico.EVENT_ANY):
         if pico.is_quit_event(event) or pico.is_key_event(event, pico.SCANCODE_ESCAPE):
             running = False
 
