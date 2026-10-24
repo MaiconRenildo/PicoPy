@@ -633,8 +633,34 @@ class PicoPy(Settings, metaclass=Singleton):
         """
         self.state.anchor_pos = anchor
 
+    def pos_ext(self, pct, rect, anchor):
+        """Calcula uma posição percentual dentro de um retângulo (equiv. pico_pos_ext).
+
+        Temporariamente usa ``anchor`` para interpretar ``(rect.x, rect.y)``
+        (como o canto/ponto de referência do retângulo) e devolve o ponto
+        correspondente a ``pct`` dentro desse retângulo.
+
+        Args:
+            pct: (x, y) percentagens (0-100) relativas à largura/altura do retângulo.
+            rect: (x, y, w, h) retângulo de referência.
+            anchor: (ax, ay) percentagens (0-100) que definem como (x, y) do
+                    retângulo é interpretado (ex.: LEFT/TOP, RIGHT/BOTTOM).
+        Returns:
+            (x, y) coordenadas no mundo lógico.
+        """
+        old = self.state.anchor_pos
+        self.state.anchor_pos = anchor
+        pt = (
+            self._hanchor(rect[0], rect[2]) + (pct[0] * rect[2]) // 100,
+            self._vanchor(rect[1], rect[3]) + (pct[1] * rect[3]) // 100,
+        )
+        self.state.anchor_pos = old
+        return pt
+
     def pos(self, pct, offset=(0, 0)):
-        """Calcula uma posição no mundo lógico com base em percentagens.
+        """Calcula uma posição no mundo lógico com base em percentagens (equiv. pico_pos).
+
+        Equivale a ``pos_ext(pct, (0, 0, world_w, world_h), (LEFT, TOP))``.
 
         Args:
             pct: (x, y) percentagens (0-100) da largura e altura do mundo.
@@ -642,10 +668,12 @@ class PicoPy(Settings, metaclass=Singleton):
         Returns:
             (x, y) coordenadas no mundo lógico.
         """
-        return (
-            ((self.state.dim_world[0] * pct[0]) // 100) + offset[0],
-            ((self.state.dim_world[1] * pct[1]) // 100) + offset[1]
+        pt = self.pos_ext(
+            pct,
+            (0, 0, self.state.dim_world[0], self.state.dim_world[1]),
+            (self.POS_LEFT, self.POS_TOP),
         )
+        return (pt[0] + offset[0], pt[1] + offset[1])
 
     def output_screenshot(self, path=None):
         """Tira um screenshot da tela"""
@@ -712,7 +740,7 @@ class PicoPy(Settings, metaclass=Singleton):
             sdlttf.TTF_CloseFont(self.state.font_ttf)
             self.state.font_ttf = None
         
-        if file is None:
+        if file in [None, "tiny.ttf"]:
             # Carregar fonte embutida
             rw = sdl2.SDL_RWFromConstMem(pico_tiny_ttf, pico_tiny_ttf_len)
             self.state.font_ttf = sdlttf.TTF_OpenFontRW(rw, 1, self.state.font_h)
