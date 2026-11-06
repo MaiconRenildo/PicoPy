@@ -1,7 +1,6 @@
 from picopy.pico import PicoPy
 
-# Constantes de cor (RGBA)
-COLOR_BACKGROUND = (240, 238, 252, 255)
+COLOR_BACKGROUND = (0, 0, 0, 255)
 COLOR_BORDER = (70, 60, 170, 255)
 COLOR_TEXT = (255, 255, 255, 255)
 COLOR_PANEL = (255, 255, 255, 255)
@@ -13,10 +12,9 @@ pico.set_title("Experimento 2")
 pico.init(True)
 pico.set_size((800, 600), (320, 240))
 pico.set_grid(False)
-pico.set_font(None, 8)  # fonte embutida (tiny)
+pico.set_font("tiny.ttf", 8)
 
 while True:
-    # --- Renderização ---
     world_w, world_h = pico.pos((100, 100))
 
     pico.set_style(pico.DRAW_FILL)
@@ -24,8 +22,7 @@ while True:
     pico.set_anchor_pos((pico.POS_LEFT, pico.POS_TOP))
     pico.output_draw_rect((0, 0, world_w, world_h))
 
-    # Footer / popup
-    foot_w, foot_h = pico.pos((53, 33))
+    foot_w, foot_h = pico.pos((50, 33))
     margin_x, margin_y = pico.pos((10, 10))
     foot = (world_w - margin_x, world_h - margin_y, foot_w, foot_h)
 
@@ -38,16 +35,14 @@ while True:
     pico.set_color(COLOR_BORDER)
     pico.output_draw_rect(foot)
 
-    # Título
-    title_pos = pico.pos_ext((50, 0), foot, (pico.POS_RIGHT, pico.POS_BOTTOM))
-    pico.set_anchor_pos((pico.POS_CENTER, pico.POS_TOP))
-    pico.output_draw_text((title_pos[0], title_pos[1] + 8), "Atualizacao")
+    title_pos = pico.pos_ext((50, 16), foot, (pico.POS_RIGHT, pico.POS_BOTTOM))
+    pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
+    pico.output_draw_text(title_pos, "Atualizacao")
 
-    # Botões
-    btn_w = foot_w * 26 // 100
+    btn_w = foot_w * 25 // 100
     btn_h = foot_h * 20 // 100
-    btn1_pos = pico.pos_ext((33, 70), foot, (pico.POS_RIGHT, pico.POS_BOTTOM))
-    btn2_pos = pico.pos_ext((67, 70), foot, (pico.POS_RIGHT, pico.POS_BOTTOM))
+    btn1_pos = pico.pos_ext((25, 50), foot, (pico.POS_RIGHT, pico.POS_BOTTOM))
+    btn2_pos = pico.pos_ext((75, 50), foot, (pico.POS_RIGHT, pico.POS_BOTTOM))
 
     pico.set_anchor_pos((pico.POS_CENTER, pico.POS_MIDDLE))
     pico.set_style(pico.DRAW_FILL)
@@ -60,5 +55,3 @@ while True:
     pico.output_draw_text(btn2_pos, "OK")
 
     pico.input_delay(FRAME_DELAY_MS)
-
-# pico.init(False)
